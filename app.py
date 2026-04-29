@@ -24,8 +24,8 @@ def load_advanced_data():
     df = df.sort_values('OrderDate').reset_index(drop=True)
     return df
 
-# --- 2. SIDEBAR & FILE UPLOAD ---
-st.sidebar.header("Upload Custom Data")
+# --- 2. SIDEBAR UPLOAD & FILTERS ---
+st.sidebar.header("1. Upload Custom Data")
 uploaded_file = st.sidebar.file_uploader("Upload your E-commerce CSV", type=["csv"])
 
 if uploaded_file is not None:
@@ -34,6 +34,24 @@ if uploaded_file is not None:
         df['OrderDate'] = pd.to_datetime(df['OrderDate'])
 else:
     df = load_advanced_data()
+
+st.sidebar.markdown("---")
+st.sidebar.header("2. Filter Data")
+
+# Get unique categories and create a multiselect box
+available_categories = df['Category'].unique().tolist()
+selected_categories = st.sidebar.multiselect(
+    "Select Categories:",
+    options=available_categories,
+    default=available_categories
+)
+
+# Apply the filter to the dataframe
+if selected_categories:
+    df = df[df['Category'].isin(selected_categories)]
+else:
+    st.warning("Please select at least one category from the sidebar to view data.")
+    st.stop()
 
 # --- 3. THE TABS ---
 tab1, tab2, tab3 = st.tabs(["📊 Executive Overview", "📈 Sales Forecasting", "👥 Customer Segmentation"])
@@ -84,7 +102,7 @@ with tab3:
     # Group by customer
     customer_data = df.groupby('CustomerID').agg({
         'TotalAmount': 'sum',
-        'OrderDate': 'count' # using count of dates as number of orders
+        'OrderDate': 'count'
     }).rename(columns={'OrderDate': 'TotalOrders'})
     
     # Train K-Means
