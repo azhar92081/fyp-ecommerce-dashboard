@@ -36,7 +36,21 @@ def load_advanced_data():
     data = data.sort_values('OrderDate').reset_index(drop=True)
     return data
 
-df = load_advanced_data()
+# --- NEW: File Uploader ---
+st.sidebar.header("Upload Custom Data")
+uploaded_file = st.sidebar.file_uploader("Upload your E-commerce CSV", type=["csv"])
+
+if uploaded_file is not None:
+    # If a user drops a file, read it!
+    df = pd.read_csv(uploaded_file)
+    
+    # Ensure the date column is formatted correctly for the ML models
+    if 'OrderDate' in df.columns:
+        df['OrderDate'] = pd.to_datetime(df['OrderDate'])
+else:
+    # Fallback: If no file is uploaded, show the dummy data so the app isn't blank
+    df = load_advanced_data()
+# --------------------------
 
 # 3. Sidebar Filtering
 st.sidebar.header("Dashboard Filters")
