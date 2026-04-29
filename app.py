@@ -18,7 +18,8 @@ def load_advanced_data():
         'OrderDate': np.random.choice(dates, 500),
         'CustomerID': np.random.randint(1000, 1050, 500),
         'TotalAmount': np.random.uniform(10.0, 500.0, 500),
-        'Category': np.random.choice(['Electronics', 'Clothing', 'Home', 'Sports'], 500)
+        'Category': np.random.choice(['Electronics', 'Clothing', 'Home', 'Sports'], 500),
+        'Region': np.random.choice(['North', 'South', 'East', 'West'], 500) # Added Region!
     }
     df = pd.DataFrame(data)
     df = df.sort_values('OrderDate').reset_index(drop=True)
@@ -38,20 +39,33 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.header("2. Filter Data")
 
-# Get unique categories and create a multiselect box
-available_categories = df['Category'].unique().tolist()
-selected_categories = st.sidebar.multiselect(
-    "Select Categories:",
-    options=available_categories,
-    default=available_categories
-)
+# Category Filter
+if 'Category' in df.columns:
+    available_categories = df['Category'].unique().tolist()
+    selected_categories = st.sidebar.multiselect(
+        "Select Categories:",
+        options=available_categories,
+        default=available_categories
+    )
+    if selected_categories:
+        df = df[df['Category'].isin(selected_categories)]
+    else:
+        st.warning("Please select at least one category to view data.")
+        st.stop()
 
-# Apply the filter to the dataframe
-if selected_categories:
-    df = df[df['Category'].isin(selected_categories)]
-else:
-    st.warning("Please select at least one category from the sidebar to view data.")
-    st.stop()
+# Region Filter
+if 'Region' in df.columns:
+    available_regions = df['Region'].unique().tolist()
+    selected_regions = st.sidebar.multiselect(
+        "Select Regions:",
+        options=available_regions,
+        default=available_regions
+    )
+    if selected_regions:
+        df = df[df['Region'].isin(selected_regions)]
+    else:
+        st.warning("Please select at least one region to view data.")
+        st.stop()
 
 # --- 3. THE TABS ---
 tab1, tab2, tab3 = st.tabs(["📊 Executive Overview", "📈 Sales Forecasting", "👥 Customer Segmentation"])
@@ -62,9 +76,19 @@ with tab1:
     st.write("Recent Transactions")
     st.dataframe(df.head(15), use_container_width=True)
     
-    st.write("Sales by Category")
-    category_sales = df.groupby('Category')['TotalAmount'].sum()
-    st.bar_chart(category_sales)
+    # Show charts side-by-side using columns
+    col1, col2 = st.columns(2)
+    with col1:
+        if 'Category' in df.columns:
+            st.write("Sales by Category")
+            category_sales = df.groupby('Category')['TotalAmount'].sum()
+            st.bar_chart(category_sales)
+            
+    with col2:
+        if 'Region' in df.columns:
+            st.write("Sales by Region")
+            region_sales = df.groupby('Region')['TotalAmount'].sum()
+            st.bar_chart(region_sales)
 
 # -- TAB 2: Linear Regression --
 with tab2:
