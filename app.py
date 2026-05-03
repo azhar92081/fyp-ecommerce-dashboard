@@ -6,8 +6,19 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import os
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="E-Commerce Dashboard", layout="wide", page_icon="🛍️")
+# --- PAGE CONFIGURATION & "WHITE-LABEL" HACK ---
+st.set_page_config(page_title="E-Commerce Intelligence", layout="wide", page_icon="🛍️")
+
+# This CSS hides the default Streamlit headers, footers, and menus to make it look like a custom enterprise app
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 st.title("🛍️ E-commerce Sales & Customer Intelligence Dashboard")
 st.markdown("Welcome to the offline analytics engine. Generate business insights and segment customers using Machine Learning.")
 
@@ -15,11 +26,7 @@ st.markdown("Welcome to the offline analytics engine. Generate business insights
 st.sidebar.header("1. Upload Data")
 uploaded_file = st.sidebar.file_uploader("Upload your retail CSV file", type=['csv'])
 
-st.sidebar.header("2. Machine Learning Settings")
-k_value = st.sidebar.slider("Select Number of Clusters (K)", min_value=2, max_value=6, value=3)
-
-# --- THE "PRESENTATION MODE" BYPASS ---
-# If they upload a file, use it. If not, automatically load the perfect dataset from GitHub!
+# --- PRESENTATION MODE LOGIC ---
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 elif os.path.exists("FYP_Perfect_Retail_Data.csv"):
@@ -30,16 +37,35 @@ else:
     st.stop()
     
 # --- UPGRADE 1: THE SAFETY NET ---
-required_columns = ['CustomerID', 'InvoiceDate', 'Quantity', 'UnitPrice', 'Country']
+required_columns = ['CustomerID', 'InvoiceDate', 'Quantity', 'UnitPrice', 'Country', 'Description']
 if not all(col in df.columns for col in required_columns):
     st.error(f"🚨 Error: Your CSV is missing required columns. Please make sure it has exactly: {required_columns}")
     st.stop()
     
 # --- DATA CLEANING & ETL ---
-df.dropna(subset=['CustomerID'], inplace=True)
+df.dropna(subset=['CustomerID', 'Description'], inplace=True)
 df = df[df['Quantity'] > 0]
 df['TotalSales'] = df['Quantity'] * df['UnitPrice']
 df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
+
+# --- SIDEBAR: DATE FILTER & ML SETTINGS ---
+st.sidebar.header("2. Filter Data")
+min_date = df['InvoiceDate'].min().date()
+max_date = df['InvoiceDate'].max().date()
+
+# The Date Range Selector
+date_range = st.sidebar.date_input("Select Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
+
+# Ensure the user has selected both a start and end date before proceeding
+if len(date_range) == 2:
+    start_date, end_date = date_range
+    df = df[(df['InvoiceDate'].dt.date >= start_date) & (df['InvoiceDate'].dt.date <= end_date)]
+else:
+    st.sidebar.warning("⚠️ Please select an end date to continue.")
+    st.stop()
+
+st.sidebar.header("3. Machine Learning Settings")
+k_value = st.sidebar.slider("Select Number of Clusters (K)", min_value=2, max_value=6, value=4)
 
 # --- UI TABS ---
 tab1, tab2, tab3 = st.tabs(["📊 Data Overview", "📈 Business KPIs", "🤖 Customer Segments (ML)"])
@@ -48,7 +74,7 @@ tab1, tab2, tab3 = st.tabs(["📊 Data Overview", "📈 Business KPIs", "🤖 Cu
 with tab1:
     st.subheader("Raw Data Preview")
     st.dataframe(df.head(100), use_container_width=True)
-    st.write(f"**Total Valid Transactions:** {df.shape[0]:,}")
+    st.write(f"**Total Valid Transactions in Selected Range:** {df.shape[0]:,}")
     
 # TAB 2: BUSINESS KPIs
 with tab2:
@@ -59,10 +85,24 @@ with tab2:
     col3.metric("Total Unique Customers", f"{df['CustomerID'].nunique():,}")
     
     st.divider()
-    st.subheader("Daily Revenue Trend")
-    daily_sales = df.groupby(df['InvoiceDate'].dt.date)['TotalSales'].sum().reset_index()
-    fig_line = px.line(daily_sales, x='InvoiceDate', y='TotalSales', title="Revenue Generation Over Time")
-    st.plotly_chart(fig_line, use_container_width=True)
+    
+    # Place the Line Chart and Bar Chart side-by-side for a pro layout
+    chart_col1, chart_col2 = st.columns(2)
+    
+    with chart_col1:
+        st.subheader("Daily Revenue Trend")
+        daily_sales = df.groupby(df['InvoiceDate'].dt.date)['TotalSales'].sum().reset_index()
+        fig_line = px.line(daily_sales, x='InvoiceDate', y='TotalSales', title="Revenue Generation Over Time")
+        st.plotly_chart(fig_line, use_container_width=True)
+
+    with chart_col2:
+        st.subheader("Top 5 Best-Selling Products")
+        top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
+        fig_bar = px.bar(
+            top_products, x='TotalSales', y='Description', orientation='h', 
+            title="Revenue by Product", color_discrete_sequence=['#00CC96']
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
     st.divider()
     st.subheader("Regional Revenue Distribution")
@@ -94,7 +134,8 @@ with tab3:
         
     fig_3d = px.scatter_3d(
         rfm_df, x='Recency', y='Frequency', z='Monetary', 
-        color=rfm_df['Cluster'].astype(str), title="3D Visualization of Customer Cohorts"
+        color=rfm_df['Cluster'].astype(str), title="3D Visualization of Customer Cohorts",
+        color_discrete_sequence=px.colors.qualitative.Plotly
     )
     st.plotly_chart(fig_3d, use_container_width=True)
     
