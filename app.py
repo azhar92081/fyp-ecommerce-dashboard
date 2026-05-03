@@ -100,8 +100,14 @@ with tab2:
             top_products, x='TotalSales', y='Description', orientation='h', 
             title="Revenue by Product", color_discrete_sequence=['#00CC96']
         )
-        # HIGH CONTRAST FIX
-        fig_bar.update_layout(font=dict(color="white", size=14), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        # HIGH CONTRAST & OVERLAP FIX
+        fig_bar.update_layout(
+            font=dict(color="white", size=14), 
+            paper_bgcolor="rgba(0,0,0,0)", 
+            plot_bgcolor="rgba(0,0,0,0)",
+            yaxis_title="",  # Deletes the overlapping "Description" text
+            margin=dict(l=150) # Gives the product names room to breathe
+        )
         st.plotly_chart(fig_bar, use_container_width=True, theme=None)
 
     st.divider()
