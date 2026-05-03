@@ -9,7 +9,6 @@ import os
 # --- PAGE CONFIGURATION & "WHITE-LABEL" HACK ---
 st.set_page_config(page_title="E-Commerce Intelligence", layout="wide", page_icon="🛍️")
 
-# This CSS hides the default Streamlit headers, footers, and menus to make it look like a custom enterprise app
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -53,10 +52,8 @@ st.sidebar.header("2. Filter Data")
 min_date = df['InvoiceDate'].min().date()
 max_date = df['InvoiceDate'].max().date()
 
-# The Date Range Selector
 date_range = st.sidebar.date_input("Select Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
 
-# Ensure the user has selected both a start and end date before proceeding
 if len(date_range) == 2:
     start_date, end_date = date_range
     df = df[(df['InvoiceDate'].dt.date >= start_date) & (df['InvoiceDate'].dt.date <= end_date)]
@@ -86,14 +83,15 @@ with tab2:
     
     st.divider()
     
-    # Place the Line Chart and Bar Chart side-by-side for a pro layout
     chart_col1, chart_col2 = st.columns(2)
     
     with chart_col1:
         st.subheader("Daily Revenue Trend")
         daily_sales = df.groupby(df['InvoiceDate'].dt.date)['TotalSales'].sum().reset_index()
         fig_line = px.line(daily_sales, x='InvoiceDate', y='TotalSales', title="Revenue Generation Over Time")
-        st.plotly_chart(fig_line, use_container_width=True)
+        # HIGH CONTRAST FIX
+        fig_line.update_layout(font=dict(color="white", size=14), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_line, use_container_width=True, theme=None)
 
     with chart_col2:
         st.subheader("Top 5 Best-Selling Products")
@@ -102,7 +100,9 @@ with tab2:
             top_products, x='TotalSales', y='Description', orientation='h', 
             title="Revenue by Product", color_discrete_sequence=['#00CC96']
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        # HIGH CONTRAST FIX
+        fig_bar.update_layout(font=dict(color="white", size=14), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig_bar, use_container_width=True, theme=None)
 
     st.divider()
     st.subheader("Regional Revenue Distribution")
@@ -111,7 +111,10 @@ with tab2:
         country_sales, values='TotalSales', names='Country', title="Total Sales by Country", 
         hole=0.4, color_discrete_sequence=px.colors.sequential.Tealgrn
     )
-    st.plotly_chart(fig_pie, use_container_width=True)
+    # HIGH CONTRAST FIX
+    fig_pie.update_traces(textfont=dict(color="white", size=16))
+    fig_pie.update_layout(font=dict(color="white", size=14), paper_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig_pie, use_container_width=True, theme=None)
     
 # TAB 3: MACHINE LEARNING & CLUSTERING
 with tab3:
@@ -137,7 +140,11 @@ with tab3:
         color=rfm_df['Cluster'].astype(str), title="3D Visualization of Customer Cohorts",
         color_discrete_sequence=px.colors.qualitative.Plotly
     )
-    st.plotly_chart(fig_3d, use_container_width=True)
+    # HIGH CONTRAST FIX
+    fig_3d.update_layout(font=dict(color="white", size=12), paper_bgcolor="rgba(0,0,0,0)", scene=dict(
+        xaxis=dict(color="white"), yaxis=dict(color="white"), zaxis=dict(color="white")
+    ))
+    st.plotly_chart(fig_3d, use_container_width=True, theme=None)
     
     st.divider()
     st.subheader("📊 Cluster Averages (Segment Breakdown)")
