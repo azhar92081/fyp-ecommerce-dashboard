@@ -7,13 +7,14 @@ from sklearn.preprocessing import StandardScaler
 import os
 
 # --- PAGE CONFIGURATION & "WHITE-LABEL" HACK ---
-st.set_page_config(page_title="E-Commerce Intelligence", layout="wide", page_icon="🛍️")
+# FIX: 'initial_sidebar_state="expanded"' locks the sidebar open automatically
+st.set_page_config(page_title="E-Commerce Intelligence", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
+# FIX: Removed the 'header' hide command so you are never locked out of the sidebar toggle
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
-            header {visibility: hidden;}
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -30,7 +31,6 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 elif os.path.exists("FYP_Perfect_Retail_Data.csv"):
     df = pd.read_csv("FYP_Perfect_Retail_Data.csv")
-    # Sounds much more professional for an FYP grading session!
     st.sidebar.success("✅ Connected to Live Enterprise Database.")
 else:
     st.info("👈 Please upload your E-commerce CSV file in the left sidebar to initialize the dashboard.")
@@ -89,7 +89,6 @@ with tab2:
     with chart_col1:
         st.subheader("Daily Revenue Trend")
         daily_sales = df.groupby(df['InvoiceDate'].dt.date)['TotalSales'].sum().reset_index()
-        # Changed to Neon Cyan
         fig_line = px.line(daily_sales, x='InvoiceDate', y='TotalSales', title="Revenue Generation Over Time", color_discrete_sequence=['#00E5FF'])
         fig_line.update_layout(font=dict(color="white", size=14), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_line, use_container_width=True, theme=None)
@@ -97,7 +96,6 @@ with tab2:
     with chart_col2:
         st.subheader("Top 5 Best-Selling Products")
         top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
-        # Changed to striking Coral/Red for "Hot" Items
         fig_bar = px.bar(
             top_products, x='TotalSales', y='Description', orientation='h', 
             title="Revenue by Product", color_discrete_sequence=['#FF4B4B']
@@ -114,7 +112,6 @@ with tab2:
     st.divider()
     st.subheader("Regional Revenue Distribution")
     country_sales = df.groupby('Country')['TotalSales'].sum().reset_index()
-    # Changed to a Vivid multi-color palette
     fig_pie = px.pie(
         country_sales, values='TotalSales', names='Country', title="Total Sales by Country", 
         hole=0.4, color_discrete_sequence=px.colors.qualitative.Vivid
