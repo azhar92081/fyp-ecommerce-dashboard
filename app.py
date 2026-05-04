@@ -8,14 +8,14 @@ from sklearn.preprocessing import StandardScaler
 import os
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="E-Commerce Intelligence V2", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="E-Commerce Intelligence V2.1", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
-# --- CUSTOM CSS & THEME TOGGLE ---
+# --- CUSTOM CSS & DYNAMIC HIGH-CONTRAST THEME TOGGLE ---
 st.sidebar.header("⚙️ App Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
 if night_mode:
-    # Forces a dark theme look
+    # High-Contrast Dark Mode
     theme_css = """
     <style>
     .stApp { background-color: #0E1117; color: #FFFFFF; }
@@ -23,48 +23,46 @@ if night_mode:
     </style>
     """
     chart_template = "plotly_dark"
+    font_color = "#FFFFFF" # Pure white text
+    chart_palette = px.colors.qualitative.Set1 # Bright, bold contrasting colors
 else:
-    # Forces a light theme look
+    # High-Contrast Light Mode
     theme_css = """
     <style>
-    .stApp { background-color: #FFFFFF; color: #000000; }
+    .stApp { background-color: #F4F6F9; color: #000000; }
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """
     chart_template = "plotly_white"
+    font_color = "#000000" # Pure black text
+    chart_palette = px.colors.qualitative.Dark24 # Deep, dark contrasting colors
     
 st.markdown(theme_css, unsafe_allow_html=True)
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 st.markdown("Interactive analytics engine featuring ML segmentation, ROI tracking, and pattern recognition.")
 
-# --- CACHED DATA PIPELINE (Fixes the glitches & lag) ---
+# --- CACHED DATA PIPELINE ---
 @st.cache_data
 def load_and_prep_data(filepath_or_buffer):
     df = pd.read_csv(filepath_or_buffer)
     
-    # Basic Cleaning
     df.dropna(subset=['CustomerID', 'Description'], inplace=True)
     df = df[df['Quantity'] > 0]
     df['TotalSales'] = df['Quantity'] * df['UnitPrice']
     df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
     df['Date'] = df['InvoiceDate'].dt.date
     
-    # --- DYNAMIC DATA GENERATION (ROI & Conversion Rate) ---
-    # We generate realistic daily visitors and ad spend based on actual sales
-    np.random.seed(42) # Keeps the "random" numbers the same every time
+    np.random.seed(42) 
     unique_dates = df['Date'].unique()
     marketing_data = pd.DataFrame({'Date': unique_dates})
     
-    # 1. Reverse engineer website visitors (Assume 2% to 5% conversion rate)
     daily_customers = df.groupby('Date')['CustomerID'].nunique().reset_index()
     marketing_data = pd.merge(marketing_data, daily_customers, on='Date')
     marketing_data['WebsiteVisitors'] = marketing_data['CustomerID'] * np.random.randint(20, 50, size=len(marketing_data))
     
-    # 2. Calculate realistic daily Ad Spend ($0.50 to $1.50 per visitor)
     marketing_data['AdSpend'] = marketing_data['WebsiteVisitors'] * np.random.uniform(0.5, 1.5, size=len(marketing_data))
     
-    # Merge back into the main dataset
     marketing_data.drop(columns=['CustomerID'], inplace=True)
     df = pd.merge(df, marketing_data, on='Date', how='left')
     
@@ -86,16 +84,13 @@ else:
 # --- INTERACTIVE CROSS-FILTERING ---
 st.sidebar.header("2. Interactive Filters")
 
-# Country Filter
 all_countries = sorted(raw_df['Country'].unique())
 selected_countries = st.sidebar.multiselect("🌍 Filter by Region", all_countries, default=all_countries[:5])
 
-# Date Filter
 min_date = raw_df['Date'].min()
 max_date = raw_df['Date'].max()
 date_range = st.sidebar.date_input("📅 Select Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
 
-# Apply Filters
 if len(date_range) == 2 and len(selected_countries) > 0:
     start_date, end_date = date_range
     df = raw_df[(raw_df['Date'] >= start_date) & (raw_df['Date'] <= end_date) & (raw_df['Country'].isin(selected_countries))]
@@ -109,15 +104,13 @@ k_value = st.sidebar.slider("Select Customer Clusters (K)", min_value=2, max_val
 # --- UI TABS ---
 tab1, tab2, tab3 = st.tabs(["📈 Executive KPIs", "🔍 Pattern Recognition", "🤖 ML Customer Segments"])
 
-# TAB 1: EXECUTIVE KPIs (Featuring ROI & Conversion Rate)
+# TAB 1: EXECUTIVE KPIs 
 with tab1:
     st.subheader("Performance & Marketing Metrics")
     
-    # Calculations
     total_revenue = df['TotalSales'].sum()
     total_buyers = df['CustomerID'].nunique()
     
-    # Because AdSpend and Visitors are identical for every row on the same day, we just take the first value of each day to sum it
     daily_marketing = df.groupby('Date').first().reset_index()
     total_ad_spend = daily_marketing['AdSpend'].sum()
     total_visitors = daily_marketing['WebsiteVisitors'].sum()
@@ -125,7 +118,6 @@ with tab1:
     roi = ((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0
     conversion_rate = (total_buyers / total_visitors) * 100 if total_visitors > 0 else 0
     
-    # Display Metrics
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Gross Revenue", f"${total_revenue:,.0f}")
     col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}")
@@ -134,14 +126,15 @@ with tab1:
     
     st.divider()
     
-    # ROI & Revenue Dual-Axis Chart
     st.subheader("Revenue vs. Marketing Spend Overlay")
     daily_trend = df.groupby('Date').agg({'TotalSales': 'sum', 'AdSpend': 'first'}).reset_index()
     
     fig_trend = px.line(daily_trend, x='Date', y=['TotalSales', 'AdSpend'], 
                         title="Pattern Analysis: Does spending more drive more sales?",
-                        labels={'value': 'US Dollars ($)', 'variable': 'Metric'})
-    fig_trend.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                        labels={'value': 'US Dollars ($)', 'variable': 'Metric'},
+                        color_discrete_sequence=chart_palette)
+    # FIX: Explicitly setting the font color to guarantee contrast
+    fig_trend.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color))
     st.plotly_chart(fig_trend, use_container_width=True)
 
 # TAB 2: PATTERN RECOGNITION
@@ -151,15 +144,16 @@ with tab2:
     with chart_col1:
         st.subheader("Top Performing Products")
         top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
-        fig_bar = px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=['#00E5FF'])
-        fig_bar.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", yaxis_title="")
+        # FIX: Using the dynamic palette
+        fig_bar = px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[1]])
+        fig_bar.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", yaxis_title="", font=dict(color=font_color))
         st.plotly_chart(fig_bar, use_container_width=True)
 
     with chart_col2:
         st.subheader("Revenue by Region")
         country_sales = df.groupby('Country')['TotalSales'].sum().reset_index()
-        fig_pie = px.pie(country_sales, values='TotalSales', names='Country', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-        fig_pie.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)")
+        fig_pie = px.pie(country_sales, values='TotalSales', names='Country', hole=0.4, color_discrete_sequence=chart_palette)
+        fig_pie.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color))
         st.plotly_chart(fig_pie, use_container_width=True)
 
 # TAB 3: MACHINE LEARNING
@@ -181,8 +175,17 @@ with tab3:
         kmeans = KMeans(n_clusters=k_value, random_state=42)
         rfm_df['Cluster'] = kmeans.fit_predict(scaled_features)
         
-    fig_3d = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str))
-    fig_3d.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, b=0, t=0))
+    fig_3d = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
+    # FIX: Forcing 3D axis labels to strictly match the contrast font color
+    fig_3d.update_layout(
+        template=chart_template, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, b=0, t=0),
+        font=dict(color=font_color),
+        scene=dict(
+            xaxis=dict(color=font_color, title_font=dict(color=font_color)), 
+            yaxis=dict(color=font_color, title_font=dict(color=font_color)), 
+            zaxis=dict(color=font_color, title_font=dict(color=font_color))
+        )
+    )
     st.plotly_chart(fig_3d, use_container_width=True)
     
     st.write("Download this segment block for targeted ad campaigns.")
