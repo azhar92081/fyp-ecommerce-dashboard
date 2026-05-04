@@ -6,29 +6,9 @@ import plotly.express as px
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import os
-import streamlit.components.v1 as components
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="E-Commerce Intelligence V3.0", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
-
-# --- GOOGLE ANALYTICS INJECTION MODULE ---
-# Tell your supervisor: "This module injects the gtag.js tracking code into the dashboard's DOM."
-def inject_google_analytics(tracking_id):
-    if tracking_id:
-        ga_script = f"""
-        <!-- Google tag (gtag.js) -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id={tracking_id}"></script>
-        <script>
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){{dataLayer.push(arguments);}}
-          gtag('js', new Date());
-          gtag('config', '{tracking_id}');
-        </script>
-        """
-        components.html(ga_script, height=0, width=0)
-
-# Uncomment and add your real GA Measurement ID here when ready
-# inject_google_analytics("G-XXXXXXXXXX")
+st.set_page_config(page_title="E-Commerce Intelligence V4.0", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 # --- CUSTOM CSS & DYNAMIC HIGH-CONTRAST THEME ---
 st.sidebar.header("⚙️ App Settings")
@@ -38,19 +18,19 @@ if night_mode:
     theme_css = "<style>.stApp { background-color: #0E1117; color: #FFFFFF; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
     chart_template = "plotly_dark"
     font_color = "#FFFFFF" 
-    hover_bg = "#1E1E1E" # Dark background for tooltips
+    hover_bg = "#1E1E1E" 
     chart_palette = px.colors.qualitative.Set1 
 else:
     theme_css = "<style>.stApp { background-color: #F4F6F9; color: #000000; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
     chart_template = "plotly_white"
     font_color = "#000000" 
-    hover_bg = "#FFFFFF" # Light background for tooltips
+    hover_bg = "#FFFFFF" 
     chart_palette = px.colors.qualitative.Dark24 
     
 st.markdown(theme_css, unsafe_allow_html=True)
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
-st.markdown("Interactive analytics engine featuring ML segmentation, ROI tracking, and pattern recognition.")
+st.markdown("Interactive analytics engine featuring ML segmentation, ROI tracking, and Web Analytics.")
 
 # --- CACHED DATA PIPELINE ---
 @st.cache_data
@@ -107,13 +87,12 @@ else:
 st.sidebar.header("3. Machine Learning Settings")
 k_value = st.sidebar.slider("Select Customer Clusters (K)", min_value=2, max_value=6, value=4)
 
-# --- UI TABS ---
-tab1, tab2, tab3 = st.tabs(["📈 Executive KPIs", "🔍 Pattern Recognition", "🤖 ML Customer Segments"])
+# --- UI TABS (NOW WITH 4 TABS) ---
+tab1, tab2, tab3, tab4 = st.tabs(["📈 Executive KPIs", "🔍 Pattern Recognition", "🤖 ML Customer Segments", "🌐 Web Analytics"])
 
 # TAB 1: EXECUTIVE KPIs 
 with tab1:
     st.subheader("Performance & Marketing Metrics")
-    
     total_revenue = df['TotalSales'].sum()
     total_buyers = df['CustomerID'].nunique()
     daily_marketing = df.groupby('Date').first().reset_index()
@@ -132,61 +111,32 @@ with tab1:
     st.divider()
     st.subheader("Revenue vs. Marketing Spend Overlay")
     daily_trend = df.groupby('Date').agg({'TotalSales': 'sum', 'AdSpend': 'first'}).reset_index()
-    
-    fig_trend = px.line(daily_trend, x='Date', y=['TotalSales', 'AdSpend'], 
-                        title="Pattern Analysis: Does spending more drive more sales?",
-                        labels={'value': 'US Dollars ($)', 'variable': 'Metric'},
-                        color_discrete_sequence=chart_palette)
-    
-    # FIX: Explicit Hoverlabel Styling added here
-    fig_trend.update_layout(
-        template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", 
-        font=dict(color=font_color),
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color)
-    )
+    fig_trend = px.line(daily_trend, x='Date', y=['TotalSales', 'AdSpend'], title="Pattern Analysis: Spend vs Revenue", color_discrete_sequence=chart_palette)
+    fig_trend.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
     st.plotly_chart(fig_trend, use_container_width=True)
 
 # TAB 2: PATTERN RECOGNITION
 with tab2:
     chart_col1, chart_col2 = st.columns(2)
-    
     with chart_col1:
         st.subheader("Top Performing Products")
         top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
         fig_bar = px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[1]])
-        
-        # FIX: Explicit Hoverlabel Styling added here
-        fig_bar.update_layout(
-            template=chart_template, paper_bgcolor="rgba(0,0,0,0)", yaxis_title="", 
-            font=dict(color=font_color),
-            hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color)
-        )
+        fig_bar.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", yaxis_title="", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
         st.plotly_chart(fig_bar, use_container_width=True)
 
     with chart_col2:
         st.subheader("Revenue by Region")
         country_sales = df.groupby('Country')['TotalSales'].sum().reset_index()
         fig_pie = px.pie(country_sales, values='TotalSales', names='Country', hole=0.4, color_discrete_sequence=chart_palette)
-        
-        # FIX: Explicit Hoverlabel Styling added here
-        fig_pie.update_layout(
-            template=chart_template, paper_bgcolor="rgba(0,0,0,0)", 
-            font=dict(color=font_color),
-            hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color)
-        )
+        fig_pie.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
         st.plotly_chart(fig_pie, use_container_width=True)
 
 # TAB 3: MACHINE LEARNING
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
-    st.write("Dynamic K-Means clustering based on your live interactive filters.")
-    
     snapshot_date = df['InvoiceDate'].max() + dt.timedelta(days=1)
-    rfm_df = df.groupby('CustomerID').agg({
-        'InvoiceDate': lambda x: (snapshot_date - x.max()).days,
-        'InvoiceNo': 'nunique',
-        'TotalSales': 'sum'
-    }).reset_index()
+    rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: (snapshot_date - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
     rfm_df.rename(columns={'InvoiceDate': 'Recency', 'InvoiceNo': 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     
     with st.spinner(f"Executing K-Means for {k_value} segments..."):
@@ -196,20 +146,41 @@ with tab3:
         rfm_df['Cluster'] = kmeans.fit_predict(scaled_features)
         
     fig_3d = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
-    
-    # FIX: Explicit Hoverlabel Styling added here
-    fig_3d.update_layout(
-        template=chart_template, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, b=0, t=0),
-        font=dict(color=font_color),
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color),
-        scene=dict(
-            xaxis=dict(color=font_color, title_font=dict(color=font_color)), 
-            yaxis=dict(color=font_color, title_font=dict(color=font_color)), 
-            zaxis=dict(color=font_color, title_font=dict(color=font_color))
-        )
-    )
+    fig_3d.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, b=0, t=0), font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color), scene=dict(xaxis=dict(color=font_color, title_font=dict(color=font_color)), yaxis=dict(color=font_color, title_font=dict(color=font_color)), zaxis=dict(color=font_color, title_font=dict(color=font_color))))
     st.plotly_chart(fig_3d, use_container_width=True)
+
+# TAB 4: WEB ANALYTICS (NEW)
+with tab4:
+    st.subheader("🌐 Simulated Google Analytics Dashboard")
+    st.write("Live website traffic metrics and acquisition channels based on customer interactions.")
     
-    st.write("Download this segment block for targeted ad campaigns.")
-    csv_export = rfm_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Export Target Demographics (.csv)", data=csv_export, file_name='ml_segments.csv', mime='text/csv')
+    col1, col2, col3, col4 = st.columns(4)
+    # Re-calculating total visitors safely for this tab
+    daily_visitors = df.groupby('Date')['WebsiteVisitors'].first()
+    tot_visitors = daily_visitors.sum()
+    
+    col1.metric("Active Users", f"{tot_visitors:,.0f}")
+    col2.metric("Page Views", f"{int(tot_visitors * 3.4):,.0f}")
+    col3.metric("Avg. Session Duration", "00:02:45")
+    col4.metric("Bounce Rate", "42.8%")
+    
+    st.divider()
+    
+    chart_col1, chart_col2 = st.columns(2)
+    
+    with chart_col1:
+        st.subheader("Daily Traffic Trend")
+        traffic_trend = df.groupby('Date')['WebsiteVisitors'].first().reset_index()
+        fig_traffic = px.area(traffic_trend, x='Date', y='WebsiteVisitors', title="Website Visitors Over Time", color_discrete_sequence=[chart_palette[2]])
+        fig_traffic.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        st.plotly_chart(fig_traffic, use_container_width=True)
+
+    with chart_col2:
+        st.subheader("Traffic Acquisition")
+        acquisition_data = pd.DataFrame({
+            'Channel': ['Organic Search', 'Direct', 'Social Media', 'Referral'],
+            'Users': [tot_visitors * 0.45, tot_visitors * 0.30, tot_visitors * 0.15, tot_visitors * 0.10]
+        })
+        fig_acq = px.pie(acquisition_data, values='Users', names='Channel', hole=0.5, color_discrete_sequence=chart_palette)
+        fig_acq.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        st.plotly_chart(fig_acq, use_container_width=True)
