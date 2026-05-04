@@ -8,9 +8,9 @@ from sklearn.preprocessing import StandardScaler
 import os
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="E-Commerce Intelligence V4.0", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="E-Commerce Intelligence V5.0", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
-# --- CUSTOM CSS & DYNAMIC HIGH-CONTRAST THEME ---
+# --- CUSTOM CSS & ENTERPRISE COLOR PALETTES ---
 st.sidebar.header("⚙️ App Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
@@ -19,13 +19,17 @@ if night_mode:
     chart_template = "plotly_dark"
     font_color = "#FFFFFF" 
     hover_bg = "#1E1E1E" 
-    chart_palette = px.colors.qualitative.Set1 
+    bg_color = "#0E1117"
+    # FIX 1: Custom Neon SaaS Palette (Highly distinct, no mixing)
+    chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"] 
 else:
     theme_css = "<style>.stApp { background-color: #F4F6F9; color: #000000; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
     chart_template = "plotly_white"
     font_color = "#000000" 
     hover_bg = "#FFFFFF" 
-    chart_palette = px.colors.qualitative.Dark24 
+    bg_color = "#F4F6F9"
+    # FIX 1: Custom Corporate Palette (Clean, professional, high contrast)
+    chart_palette = ["#0056D2", "#D32F2F", "#FBC02D", "#6A1B9A", "#2E7D32", "#E65100"] 
     
 st.markdown(theme_css, unsafe_allow_html=True)
 
@@ -87,7 +91,7 @@ else:
 st.sidebar.header("3. Machine Learning Settings")
 k_value = st.sidebar.slider("Select Customer Clusters (K)", min_value=2, max_value=6, value=4)
 
-# --- UI TABS (NOW WITH 4 TABS) ---
+# --- UI TABS ---
 tab1, tab2, tab3, tab4 = st.tabs(["📈 Executive KPIs", "🔍 Pattern Recognition", "🤖 ML Customer Segments", "🌐 Web Analytics"])
 
 # TAB 1: EXECUTIVE KPIs 
@@ -113,6 +117,9 @@ with tab1:
     daily_trend = df.groupby('Date').agg({'TotalSales': 'sum', 'AdSpend': 'first'}).reset_index()
     fig_trend = px.line(daily_trend, x='Date', y=['TotalSales', 'AdSpend'], title="Pattern Analysis: Spend vs Revenue", color_discrete_sequence=chart_palette)
     fig_trend.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+    
+    # FIX 2: Thicker line width so it doesn't get lost
+    fig_trend.update_traces(line=dict(width=3)) 
     st.plotly_chart(fig_trend, use_container_width=True)
 
 # TAB 2: PATTERN RECOGNITION
@@ -121,8 +128,11 @@ with tab2:
     with chart_col1:
         st.subheader("Top Performing Products")
         top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
-        fig_bar = px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[1]])
+        fig_bar = px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]])
         fig_bar.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", yaxis_title="", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        
+        # FIX 2: Added a clean outline to the bars
+        fig_bar.update_traces(marker=dict(line=dict(color=bg_color, width=1.5)))
         st.plotly_chart(fig_bar, use_container_width=True)
 
     with chart_col2:
@@ -130,6 +140,9 @@ with tab2:
         country_sales = df.groupby('Country')['TotalSales'].sum().reset_index()
         fig_pie = px.pie(country_sales, values='TotalSales', names='Country', hole=0.4, color_discrete_sequence=chart_palette)
         fig_pie.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        
+        # FIX 2: Added thick separator lines between pie slices so colors never mix
+        fig_pie.update_traces(marker=dict(line=dict(color=bg_color, width=2.5)))
         st.plotly_chart(fig_pie, use_container_width=True)
 
 # TAB 3: MACHINE LEARNING
@@ -147,15 +160,15 @@ with tab3:
         
     fig_3d = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
     fig_3d.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, b=0, t=0), font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color), scene=dict(xaxis=dict(color=font_color, title_font=dict(color=font_color)), yaxis=dict(color=font_color, title_font=dict(color=font_color)), zaxis=dict(color=font_color, title_font=dict(color=font_color))))
+    
+    # FIX 2: The ultimate 3D fix. Added a distinct border to every single dot so clusters never visually merge.
+    fig_3d.update_traces(marker=dict(size=6, line=dict(width=1.5, color='#000000')))
     st.plotly_chart(fig_3d, use_container_width=True)
 
-# TAB 4: WEB ANALYTICS (NEW)
+# TAB 4: WEB ANALYTICS
 with tab4:
     st.subheader("🌐 Simulated Google Analytics Dashboard")
-    st.write("Live website traffic metrics and acquisition channels based on customer interactions.")
-    
     col1, col2, col3, col4 = st.columns(4)
-    # Re-calculating total visitors safely for this tab
     daily_visitors = df.groupby('Date')['WebsiteVisitors'].first()
     tot_visitors = daily_visitors.sum()
     
@@ -165,22 +178,19 @@ with tab4:
     col4.metric("Bounce Rate", "42.8%")
     
     st.divider()
-    
     chart_col1, chart_col2 = st.columns(2)
     
     with chart_col1:
         st.subheader("Daily Traffic Trend")
         traffic_trend = df.groupby('Date')['WebsiteVisitors'].first().reset_index()
-        fig_traffic = px.area(traffic_trend, x='Date', y='WebsiteVisitors', title="Website Visitors Over Time", color_discrete_sequence=[chart_palette[2]])
+        fig_traffic = px.area(traffic_trend, x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]])
         fig_traffic.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
         st.plotly_chart(fig_traffic, use_container_width=True)
 
     with chart_col2:
         st.subheader("Traffic Acquisition")
-        acquisition_data = pd.DataFrame({
-            'Channel': ['Organic Search', 'Direct', 'Social Media', 'Referral'],
-            'Users': [tot_visitors * 0.45, tot_visitors * 0.30, tot_visitors * 0.15, tot_visitors * 0.10]
-        })
+        acquisition_data = pd.DataFrame({'Channel': ['Organic Search', 'Direct', 'Social Media', 'Referral'], 'Users': [tot_visitors * 0.45, tot_visitors * 0.30, tot_visitors * 0.15, tot_visitors * 0.10]})
         fig_acq = px.pie(acquisition_data, values='Users', names='Channel', hole=0.5, color_discrete_sequence=chart_palette)
         fig_acq.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        fig_acq.update_traces(marker=dict(line=dict(color=bg_color, width=2.5)))
         st.plotly_chart(fig_acq, use_container_width=True)
