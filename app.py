@@ -150,37 +150,38 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- SOLUTION: AUTO-HEALING MODEL ROUTER ---
+# --- SOLUTION: DYNAMIC AUTO-DISCOVERY ENGINE ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, key):
     genai.configure(api_key=key)
     
-    # Priority cascade of models. It tries each one in order until it gets a 200 OK response.
-    fallback_models = [
-        'models/gemini-1.5-flash', 
-        'models/gemini-1.5-pro', 
-        'models/gemini-1.0-pro', 
-        'models/gemini-pro'
-    ]
-    
+    # 1. Ask Google what models are actually available for this specific API key
+    valid_models = []
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            # We strictly want a text model, no vision/image models
+            if 'gemini' in m.name.lower() and 'vision' not in m.name.lower():
+                valid_models.append(m.name)
+                
+    if not valid_models:
+        raise Exception("Google API returned no valid Gemini text models for your account/region.")
+
+    # 2. Automatically select the best model from the live list (prioritizing 1.5-flash)
+    target_model = valid_models[0]
+    for m in valid_models:
+        if '1.5-flash' in m:
+            target_model = m
+            break
+            
+    # 3. Fire the request using the verified model name
+    model = genai.GenerativeModel(target_model)
     context_prompt = f"""
     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
     Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
     Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
     """
-    
-    last_error = ""
-    for model_name in fallback_models:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(context_prompt)
-            return response.text, model_name
-        except Exception as e:
-            last_error = str(e)
-            continue # If a model hits a 404 or 429, seamlessly skip to the next one
-            
-    # If it burns through all 4 models and fails, it throws the actual error back to the UI.
-    raise Exception(last_error)
+    response = model.generate_content(context_prompt)
+    return response.text, target_model
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
@@ -245,34 +246,29 @@ with tab6:
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with Auto-Healing Model Routing and Circuit Breaker.")
+    st.write("Generative AI integration with Dynamic Auto-Discovery Model Routing.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             
-            with st.spinner("Analyzing metrics and negotiating with Google AI servers..."):
+            with st.spinner("Analyzing metrics and dynamically locating available Google AI models..."):
                 try:
-                    # Attempt the auto-healing API cascade
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
                     
-                    st.success(f"✅ AI Analysis Complete (Live API / Handshake verified with: {successful_model})")
+                    st.success(f"✅ AI Analysis Complete (Live API Handshake verified with: {successful_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
                     st.write(report_text)
                     
                 except Exception as e:
-                    # VERBOSE LOGGING: If it fails entirely, it prints the EXACT reason why.
                     st.error(f"🚨 Google API Handshake Failed. Raw Error Data: {e}")
                     st.warning("✅ Edge-Compute Fallback Active. Generating deep insights locally to protect the FYP presentation.")
                     
                     st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
-                    
                     st.write(f"**Executive Financial Summary:**")
                     st.write(f"Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{roi_value:,.1f}%** and a web conversion rate of **{conv_value:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
-                    
                     st.write(f"**Inventory & Product Performance:**")
                     st.write(f"The catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
-                    
                     st.write("**Strategic Machine Learning Recommendation:**")
                     st.write("Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
     else:
