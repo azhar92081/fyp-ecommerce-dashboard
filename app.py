@@ -9,9 +9,10 @@ from sklearn.preprocessing import StandardScaler
 import sqlite3
 import hashlib
 import os
+import google.generativeai as genai
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Enterprise Intelligence V9.0", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Enterprise Intelligence V10.0 (AI Edition)", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 # --- SECURITY UTILS ---
 def hash_password(password):
@@ -20,14 +21,12 @@ def hash_password(password):
 # --- CLOUD AUTO-PROVISIONING ENGINE ---
 @st.cache_resource
 def auto_provision_db():
-    """Builds the core database architecture on boot."""
     conn = sqlite3.connect('enterprise_backend.db')
     cursor = conn.cursor()
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
     if not cursor.fetchone():
         cursor.execute('''CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL)''')
         cursor.execute('''CREATE TABLE system_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, alert_type TEXT NOT NULL, message TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-        # Provision default admin
         cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", ('admin', hash_password("iub2026"), 'System Administrator'))
         conn.commit()
     conn.close()
@@ -41,21 +40,17 @@ night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 if night_mode:
     theme_css = "<style>.stApp { background-color: #0E1117; color: #FFFFFF; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
     chart_template = "plotly_dark"
-    font_color = "#FFFFFF" 
-    hover_bg = "#1E1E1E" 
-    bg_color = "#0E1117"
+    font_color = "#FFFFFF"; hover_bg = "#1E1E1E"; bg_color = "#0E1117"
     chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"] 
 else:
     theme_css = "<style>.stApp { background-color: #F4F6F9; color: #000000; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
     chart_template = "plotly_white"
-    font_color = "#000000" 
-    hover_bg = "#FFFFFF" 
-    bg_color = "#F4F6F9"
+    font_color = "#000000"; hover_bg = "#FFFFFF"; bg_color = "#F4F6F9"
     chart_palette = ["#0056D2", "#D32F2F", "#FBC02D", "#6A1B9A", "#2E7D32", "#E65100"] 
     
 st.markdown(theme_css, unsafe_allow_html=True)
 
-# --- ENTERPRISE SECURITY: SQL DATABASE LOGIN ---
+# --- ENTERPRISE SECURITY: SQL LOGIN ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['role'] = None
@@ -91,25 +86,25 @@ if st.sidebar.button("🚪 Secure Logout"):
     st.rerun()
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
-st.markdown("Full-Stack Analytics Engine powered by SQLite Relational Database.")
 
-# --- DYNAMIC DATA INGESTION (THE NEW FEATURE) ---
+# --- AI CONFIGURATION ---
+st.sidebar.header("🧠 AI Configuration")
+api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
+
+# --- DYNAMIC DATA INGESTION ---
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
 
 if uploaded_file is not None:
     with st.spinner("Injecting data into SQLite Database..."):
-        # 1. Read the uploaded file
         new_data = pd.read_csv(uploaded_file)
-        # 2. Connect to DB and replace the old table with new data
         conn = sqlite3.connect('enterprise_backend.db')
         new_data.to_sql('ecommerce_sales', conn, if_exists='replace', index=False)
         conn.close()
-        # 3. Clear Streamlit's memory so it pulls the fresh DB data
         st.cache_data.clear()
         st.sidebar.success("✅ Database Successfully Updated!")
 
-# --- LIVE SQL DATA FETCHING PIPELINE ---
+# --- LIVE SQL DATA FETCHING ---
 @st.cache_data(ttl=300) 
 def load_data_from_sql():
     try:
@@ -117,13 +112,12 @@ def load_data_from_sql():
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ecommerce_sales'")
         if not cursor.fetchone():
-            return pd.DataFrame() # Table doesn't exist yet
+            return pd.DataFrame() 
 
         df = pd.read_sql("SELECT * FROM ecommerce_sales", conn)
         conn.close()
         
-        if df.empty:
-            return df
+        if df.empty: return df
             
         df.dropna(subset=['CustomerID', 'Description'], inplace=True)
         df = df[df['Quantity'] > 0]
@@ -149,8 +143,6 @@ raw_df = load_data_from_sql()
 if raw_df.empty:
     st.info("👈 System Architecture Online. Please upload a CSV file to initialize the SQL database.")
     st.stop()
-else:
-    st.sidebar.success("📡 DB Connection: STABLE")
 
 # --- FILTERS ---
 st.sidebar.header("2. Interactive Filters")
@@ -170,7 +162,6 @@ else:
 st.sidebar.header("3. Machine Learning Settings")
 k_value = st.sidebar.slider("Select Customer Clusters (K)", min_value=2, max_value=6, value=4)
 
-# --- SYSTEM ALERTS AUTOMATION ---
 def trigger_alert(message, alert_type="WARNING"):
     conn = sqlite3.connect('enterprise_backend.db')
     cursor = conn.cursor()
@@ -179,138 +170,86 @@ def trigger_alert(message, alert_type="WARNING"):
     conn.close()
 
 # --- UI TABS ---
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web Analytics", "🔮 30-Day Forecast", "📩 System Alerts"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
-# TAB 1: EXECUTIVE KPIs 
 with tab1:
     total_revenue = df['TotalSales'].sum()
     total_buyers = df['CustomerID'].nunique()
     daily_marketing = df.groupby('Date').first().reset_index()
     total_ad_spend = daily_marketing['AdSpend'].sum()
     total_visitors = daily_marketing['WebsiteVisitors'].sum()
-    
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Gross Revenue", f"${total_revenue:,.0f}")
     col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}")
     col3.metric("ROI", f"{((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0:,.1f}%")
-    col4.metric("Conversion Rate", f"{(total_buyers / total_visitors) * 100 if total_visitors > 0 else 0:,.2f}%")
-    
-    st.divider()
-    daily_trend = df.groupby('Date').agg({'TotalSales': 'sum', 'AdSpend': 'first'}).reset_index()
-    fig_trend = px.line(daily_trend, x='Date', y=['TotalSales', 'AdSpend'], title="Pattern Analysis: Spend vs Revenue", color_discrete_sequence=chart_palette)
-    fig_trend.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
-    fig_trend.update_traces(line=dict(width=3)) 
-    st.plotly_chart(fig_trend, use_container_width=True)
+    col4.metric("Conversion", f"{(total_buyers / total_visitors) * 100 if total_visitors > 0 else 0:,.2f}%")
 
-# TAB 2: PATTERN RECOGNITION 
 with tab2:
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        st.subheader("Top Performing Products")
-        top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
-        fig_bar = px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]])
-        fig_bar.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", yaxis_title="", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
-        fig_bar.update_traces(marker=dict(line=dict(color=bg_color, width=1.5)))
-        st.plotly_chart(fig_bar, use_container_width=True)
+    top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
+    st.subheader("Top Performing Products")
+    st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
-    with chart_col2:
-        st.subheader("Revenue by Region")
-        country_sales = df.groupby('Country')['TotalSales'].sum().reset_index()
-        fig_pie = px.pie(country_sales, values='TotalSales', names='Country', hole=0.4, color_discrete_sequence=chart_palette)
-        fig_pie.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
-        fig_pie.update_traces(marker=dict(line=dict(color=bg_color, width=2.5)))
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-# TAB 3: MACHINE LEARNING 
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
     snapshot_date = df['InvoiceDate'].max() + dt.timedelta(days=1)
     rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: (snapshot_date - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
     rfm_df.rename(columns={'InvoiceDate': 'Recency', 'InvoiceNo': 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
-    
-    with st.spinner(f"Executing K-Means for {k_value} segments..."):
-        scaler = StandardScaler()
-        scaled_features = scaler.fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']])
-        kmeans = KMeans(n_clusters=k_value, random_state=42)
-        rfm_df['Cluster'] = kmeans.fit_predict(scaled_features)
-        
-    fig_3d = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
-    fig_3d.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, b=0, t=0), font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color), scene=dict(xaxis=dict(color=font_color, title_font=dict(color=font_color)), yaxis=dict(color=font_color, title_font=dict(color=font_color)), zaxis=dict(color=font_color, title_font=dict(color=font_color))))
-    fig_3d.update_traces(marker=dict(size=6, line=dict(width=1.5, color='#000000')))
-    st.plotly_chart(fig_3d, use_container_width=True)
+    scaler = StandardScaler(); scaled_features = scaler.fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']])
+    kmeans = KMeans(n_clusters=k_value, random_state=42); rfm_df['Cluster'] = kmeans.fit_predict(scaled_features)
+    st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
 
-# TAB 4: WEB ANALYTICS 
 with tab4:
-    st.subheader("🌐 Simulated Google Analytics Dashboard")
-    col1, col2, col3, col4 = st.columns(4)
-    daily_visitors = df.groupby('Date')['WebsiteVisitors'].first()
-    tot_visitors = daily_visitors.sum()
-    
-    col1.metric("Active Users", f"{tot_visitors:,.0f}")
-    col2.metric("Page Views", f"{int(tot_visitors * 3.4):,.0f}")
-    col3.metric("Avg. Session Duration", "00:02:45")
-    col4.metric("Bounce Rate", "42.8%")
-    
-    st.divider()
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        st.subheader("Daily Traffic Trend")
-        traffic_trend = df.groupby('Date')['WebsiteVisitors'].first().reset_index()
-        fig_traffic = px.area(traffic_trend, x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]])
-        fig_traffic.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
-        st.plotly_chart(fig_traffic, use_container_width=True)
+    st.subheader("Simulated Google Analytics")
+    st.plotly_chart(px.area(df.groupby('Date')['WebsiteVisitors'].first().reset_index(), x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]]), use_container_width=True)
 
-    with chart_col2:
-        st.subheader("Traffic Acquisition")
-        acquisition_data = pd.DataFrame({'Channel': ['Organic Search', 'Direct', 'Social Media', 'Referral'], 'Users': [tot_visitors * 0.45, tot_visitors * 0.30, tot_visitors * 0.15, tot_visitors * 0.10]})
-        fig_acq = px.pie(acquisition_data, values='Users', names='Channel', hole=0.5, color_discrete_sequence=chart_palette)
-        fig_acq.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
-        fig_acq.update_traces(marker=dict(line=dict(color=bg_color, width=2.5)))
-        st.plotly_chart(fig_acq, use_container_width=True)
-
-# TAB 5: PREDICTIVE ANALYTICS & AUTOMATION TRIGGERS
 with tab5:
-    st.subheader("🔮 Machine Learning Sales Forecast & Automation")
-    
     daily_sales = df.groupby('Date')['TotalSales'].sum().reset_index()
-    daily_sales['Date'] = pd.to_datetime(daily_sales['Date'])
-    daily_sales['Ordinal'] = daily_sales['Date'].apply(lambda x: x.toordinal())
-    
-    z = np.polyfit(daily_sales['Ordinal'], daily_sales['TotalSales'], 2)
-    p = np.poly1d(z)
-    
-    last_date = daily_sales['Date'].max()
-    future_dates = [last_date + dt.timedelta(days=x) for x in range(1, 31)]
-    future_ordinals = [d.toordinal() for d in future_dates]
-    predictions = p(future_ordinals)
-    predictions = np.maximum(predictions, 0)
-    
-    if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85):
-        trigger_alert(f"Automated Warning: Forecasted revenue drop detected in the next 30 days for selected regions.", "FORECAST_WARNING")
-    
+    daily_sales['Ordinal'] = pd.to_datetime(daily_sales['Date']).apply(lambda x: x.toordinal())
+    z = np.polyfit(daily_sales['Ordinal'], daily_sales['TotalSales'], 2); p = np.poly1d(z)
+    future_dates = [daily_sales['Date'].max() + dt.timedelta(days=x) for x in range(1, 31)]
+    predictions = np.maximum(p([d.toordinal() for d in pd.to_datetime(future_dates)]), 0)
+    if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): trigger_alert("Automated Warning: Forecasted revenue drop detected.", "FORECAST_WARNING")
     fig_predict = go.Figure()
-    fig_predict.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0], width=2)))
-    fig_predict.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='30-Day Forecast', line=dict(color=chart_palette[1], width=3, dash='dot')))
-    fig_predict.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+    fig_predict.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
+    fig_predict.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Forecast', line=dict(color=chart_palette[1], dash='dot')))
     st.plotly_chart(fig_predict, use_container_width=True)
 
-# TAB 6: BACKEND SYSTEM ALERTS
 with tab6:
-    st.subheader("📩 Backend Automation & System Alerts")
-    st.write("Live logs of automated system triggers and warnings.")
-    
     try:
         conn = sqlite3.connect('enterprise_backend.db')
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_alerts'")
-        if cursor.fetchone():
-            alerts_df = pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn)
-            if not alerts_df.empty:
-                st.dataframe(alerts_df, use_container_width=True, hide_index=True)
-            else:
-                st.success("✅ No critical alerts in the system log.")
-        else:
-            st.success("✅ System architecture initializing...")
-        conn.close()
-    except:
-        st.error("Could not fetch alerts table.")
+        if cursor.fetchone(): st.dataframe(pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn), use_container_width=True, hide_index=True)
+    except: pass
+
+# --- TAB 7: GEMINI AI INTEGRATION ---
+with tab7:
+    st.subheader("🧠 Gemini Executive AI Analyst")
+    st.write("Generative AI integration to synthesize database metrics into actionable natural language intelligence.")
+    
+    if api_key:
+        if st.button("✨ Generate Live Executive Report"):
+            with st.spinner("Connecting to Google Generative AI... analyzing database context..."):
+                try:
+                    genai.configure(api_key=api_key)
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
+                    context_prompt = f"""
+                    Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
+                    Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
+                    
+                    Here is the live data:
+                    - Total Gross Revenue: ${total_revenue:,.2f}
+                    - Total Unique Buyers: {total_buyers}
+                    - Total Marketing Spend: ${total_ad_spend:,.2f}
+                    - Highest Grossing Product: {top_item}
+                    - Selected Date Range: {start_date} to {end_date}
+                    """
+                    response = model.generate_content(context_prompt)
+                    st.success("✅ AI Analysis Complete")
+                    st.markdown("### 📊 Automated Executive Intelligence Brief")
+                    st.write(response.text)
+                except Exception as e:
+                    st.error(f"API Error: Please check if your API key is valid. Details: {e}")
+    else:
+        st.warning("⚠️ Authentication Required: Please paste your Gemini API Key in the left sidebar to activate the AI Analyst.")
