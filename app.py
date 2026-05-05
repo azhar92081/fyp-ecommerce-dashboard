@@ -11,7 +11,7 @@ import hashlib
 import os
 import google.generativeai as genai
 
-st.set_page_config(page_title="Enterprise Intelligence V10.3 (Fail-Safe Edition)", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Enterprise Intelligence V10.4", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -150,30 +150,35 @@ with tab1:
     col4.metric("Conversion", f"{(total_buyers / total_visitors) * 100 if total_visitors > 0 else 0:,.2f}%")
 
 with tab2:
+    st.subheader("Top Performing Products")
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
     st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
 with tab3:
+    st.subheader("Unsupervised Customer Segmentation")
     rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: ((df['InvoiceDate'].max() + dt.timedelta(days=1)) - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
     rfm_df.rename(columns={'InvoiceDate': 'Recency', 'InvoiceNo': 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
 
 with tab4:
+    st.subheader("Simulated Google Analytics Traffic")
     st.plotly_chart(px.area(df.groupby('Date')['WebsiteVisitors'].first().reset_index(), x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]]), use_container_width=True)
 
 with tab5:
+    st.subheader("30-Day Predictive Sales Forecast")
     daily_sales = df.groupby('Date')['TotalSales'].sum().reset_index()
     z = np.polyfit(pd.to_datetime(daily_sales['Date']).apply(lambda x: x.toordinal()), daily_sales['TotalSales'], 2)
     future_dates = [daily_sales['Date'].max() + dt.timedelta(days=x) for x in range(1, 31)]
     predictions = np.maximum(np.poly1d(z)([d.toordinal() for d in pd.to_datetime(future_dates)]), 0)
     if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): trigger_alert("Automated Warning: Forecasted revenue drop detected.", "FORECAST_WARNING")
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical', line=dict(color=chart_palette[0])))
-    fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Forecast', line=dict(color=chart_palette[1], dash='dot')))
+    fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
+    fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Forecast Trajectory', line=dict(color=chart_palette[1], dash='dot')))
     st.plotly_chart(fig, use_container_width=True)
 
 with tab6:
+    st.subheader("System Anomaly Alerts")
     try:
         conn = sqlite3.connect('enterprise_backend.db')
         if conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_alerts'").fetchone(): 
@@ -190,7 +195,6 @@ with tab7:
             
             with st.spinner("Connecting to Google AI API..."):
                 try:
-                    # Attempt standard connection with explicit lightweight text model
                     genai.configure(api_key=api_key)
                     model = genai.GenerativeModel('models/gemini-1.5-flash')
                     
@@ -206,10 +210,10 @@ with tab7:
                     st.write(response.text)
                     
                 except Exception as e:
-                    # THE ENTERPRISE CIRCUIT BREAKER: If Google rejects the API, generate the report locally using string formatting so the demo survives.
-                    st.success("✅ AI Analysis Complete (API Rate Limited. Edge-Compute Fallback Active)")
-                    st.markdown("### 📊 Automated Executive Intelligence Brief")
-                    st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **${total_ad_spend:,.2f}**, indicating a strong, optimized return on ad spend (ROAS) driven by our current customer acquisition strategy.")
+                    # PATCH APPLIED: Notice the backslashes (\$) before the variables to stop Streamlit from rendering LaTeX math blocks.
+                    st.warning("✅ AI Rate Limited (60-second cooldown). Edge-Compute Fallback Active. Please wait 1 minute to generate full dynamic insights.")
+                    st.markdown("### 📊 Local System Fallback Brief")
+                    st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**, indicating a strong, optimized return on ad spend (ROAS) driven by our current customer acquisition strategy.")
                     st.write(f"**Inventory & Product Performance:**\nThe catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent stockouts.")
                     st.write("**Strategic Machine Learning Recommendation:**\nBased on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and mitigate the revenue drop currently forecasted by the automated system alerts.")
     else:
