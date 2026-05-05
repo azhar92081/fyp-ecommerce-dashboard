@@ -12,7 +12,7 @@ import os
 import google.generativeai as genai
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Enterprise Intelligence V10.0 (AI Edition)", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Enterprise Intelligence V10.1 (AI Edition)", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 # --- SECURITY UTILS ---
 def hash_password(password):
@@ -109,37 +109,25 @@ if uploaded_file is not None:
 def load_data_from_sql():
     try:
         conn = sqlite3.connect('enterprise_backend.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ecommerce_sales'")
-        if not cursor.fetchone():
-            return pd.DataFrame() 
-
         df = pd.read_sql("SELECT * FROM ecommerce_sales", conn)
         conn.close()
-        
         if df.empty: return df
-            
         df.dropna(subset=['CustomerID', 'Description'], inplace=True)
         df = df[df['Quantity'] > 0]
         df['TotalSales'] = df['Quantity'] * df['UnitPrice']
         df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
         df['Date'] = df['InvoiceDate'].dt.date
-        
         np.random.seed(42) 
-        unique_dates = df['Date'].unique()
-        marketing_data = pd.DataFrame({'Date': unique_dates})
+        marketing_data = pd.DataFrame({'Date': df['Date'].unique()})
         daily_customers = df.groupby('Date')['CustomerID'].nunique().reset_index()
         marketing_data = pd.merge(marketing_data, daily_customers, on='Date')
         marketing_data['WebsiteVisitors'] = marketing_data['CustomerID'] * np.random.randint(20, 50, size=len(marketing_data))
         marketing_data['AdSpend'] = marketing_data['WebsiteVisitors'] * np.random.uniform(0.5, 1.5, size=len(marketing_data))
         marketing_data.drop(columns=['CustomerID'], inplace=True)
-        df = pd.merge(df, marketing_data, on='Date', how='left')
-        return df
-    except Exception as e:
-        return pd.DataFrame() 
+        return pd.merge(df, marketing_data, on='Date', how='left')
+    except: return pd.DataFrame() 
 
 raw_df = load_data_from_sql()
-
 if raw_df.empty:
     st.info("👈 System Architecture Online. Please upload a CSV file to initialize the SQL database.")
     st.stop()
@@ -148,16 +136,13 @@ if raw_df.empty:
 st.sidebar.header("2. Interactive Filters")
 all_countries = sorted(raw_df['Country'].unique())
 selected_countries = st.sidebar.multiselect("🌍 Filter by Region", all_countries, default=all_countries[:5])
-min_date = raw_df['Date'].min()
-max_date = raw_df['Date'].max()
+min_date, max_date = raw_df['Date'].min(), raw_df['Date'].max()
 date_range = st.sidebar.date_input("📅 Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
 
 if len(date_range) == 2 and len(selected_countries) > 0:
     start_date, end_date = date_range
     df = raw_df[(raw_df['Date'] >= start_date) & (raw_df['Date'] <= end_date) & (raw_df['Country'].isin(selected_countries))]
-else:
-    st.sidebar.warning("⚠️ Please select a valid date range and at least one country.")
-    st.stop()
+else: st.stop()
 
 st.sidebar.header("3. Machine Learning Settings")
 k_value = st.sidebar.slider("Select Customer Clusters (K)", min_value=2, max_value=6, value=4)
@@ -166,8 +151,7 @@ def trigger_alert(message, alert_type="WARNING"):
     conn = sqlite3.connect('enterprise_backend.db')
     cursor = conn.cursor()
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
-    conn.commit()
-    conn.close()
+    conn.commit(); conn.close()
 
 # --- UI TABS ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
@@ -175,9 +159,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns"
 with tab1:
     total_revenue = df['TotalSales'].sum()
     total_buyers = df['CustomerID'].nunique()
-    daily_marketing = df.groupby('Date').first().reset_index()
-    total_ad_spend = daily_marketing['AdSpend'].sum()
-    total_visitors = daily_marketing['WebsiteVisitors'].sum()
+    total_ad_spend = df.groupby('Date').first()['AdSpend'].sum()
+    total_visitors = df.groupby('Date').first()['WebsiteVisitors'].sum()
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Gross Revenue", f"${total_revenue:,.0f}")
     col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}")
@@ -185,17 +168,15 @@ with tab1:
     col4.metric("Conversion", f"{(total_buyers / total_visitors) * 100 if total_visitors > 0 else 0:,.2f}%")
 
 with tab2:
-    top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
+    top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
     st.subheader("Top Performing Products")
     st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
-    snapshot_date = df['InvoiceDate'].max() + dt.timedelta(days=1)
-    rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: (snapshot_date - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
+    rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: ((df['InvoiceDate'].max() + dt.timedelta(days=1)) - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
     rfm_df.rename(columns={'InvoiceDate': 'Recency', 'InvoiceNo': 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
-    scaler = StandardScaler(); scaled_features = scaler.fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']])
-    kmeans = KMeans(n_clusters=k_value, random_state=42); rfm_df['Cluster'] = kmeans.fit_predict(scaled_features)
+    rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
 
 with tab4:
@@ -204,35 +185,50 @@ with tab4:
 
 with tab5:
     daily_sales = df.groupby('Date')['TotalSales'].sum().reset_index()
-    daily_sales['Ordinal'] = pd.to_datetime(daily_sales['Date']).apply(lambda x: x.toordinal())
-    z = np.polyfit(daily_sales['Ordinal'], daily_sales['TotalSales'], 2); p = np.poly1d(z)
+    z = np.polyfit(pd.to_datetime(daily_sales['Date']).apply(lambda x: x.toordinal()), daily_sales['TotalSales'], 2)
     future_dates = [daily_sales['Date'].max() + dt.timedelta(days=x) for x in range(1, 31)]
-    predictions = np.maximum(p([d.toordinal() for d in pd.to_datetime(future_dates)]), 0)
+    predictions = np.maximum(np.poly1d(z)([d.toordinal() for d in pd.to_datetime(future_dates)]), 0)
     if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): trigger_alert("Automated Warning: Forecasted revenue drop detected.", "FORECAST_WARNING")
-    fig_predict = go.Figure()
-    fig_predict.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
-    fig_predict.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Forecast', line=dict(color=chart_palette[1], dash='dot')))
-    st.plotly_chart(fig_predict, use_container_width=True)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical', line=dict(color=chart_palette[0])))
+    fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Forecast', line=dict(color=chart_palette[1], dash='dot')))
+    st.plotly_chart(fig, use_container_width=True)
 
 with tab6:
     try:
         conn = sqlite3.connect('enterprise_backend.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_alerts'")
-        if cursor.fetchone(): st.dataframe(pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn), use_container_width=True, hide_index=True)
+        if conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_alerts'").fetchone(): 
+            st.dataframe(pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn), use_container_width=True, hide_index=True)
     except: pass
 
-# --- TAB 7: GEMINI AI INTEGRATION ---
+# --- TAB 7: DYNAMIC GEMINI AI INTEGRATION ---
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration to synthesize database metrics into actionable natural language intelligence.")
+    st.write("Generative AI integration with Dynamic Model Routing.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
-            with st.spinner("Connecting to Google Generative AI... analyzing database context..."):
+            with st.spinner("Connecting to Google AI and routing to optimal model..."):
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-pro')
+                    
+                    # 1. DYNAMIC MODEL AUTO-DISCOVERY
+                    # The app asks Google which text-generation models your key has access to
+                    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    
+                    if not available_models:
+                        st.error("API Error: Your key is valid, but it does not have access to any Generative text models. Please check your Google AI Studio billing/permissions.")
+                        st.stop()
+                        
+                    # 2. AUTO-SELECT THE BEST MODEL
+                    best_model = available_models[0] # Fallback to first available
+                    for m in available_models:
+                        if '1.5-flash' in m: best_model = m; break
+                        elif 'pro' in m: best_model = m
+                        
+                    model = genai.GenerativeModel(best_model)
+                    
+                    # 3. GENERATE INTELLIGENCE
                     top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
                     context_prompt = f"""
                     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
@@ -243,13 +239,14 @@ with tab7:
                     - Total Unique Buyers: {total_buyers}
                     - Total Marketing Spend: ${total_ad_spend:,.2f}
                     - Highest Grossing Product: {top_item}
-                    - Selected Date Range: {start_date} to {end_date}
                     """
                     response = model.generate_content(context_prompt)
-                    st.success("✅ AI Analysis Complete")
+                    
+                    st.success(f"✅ AI Analysis Complete (Dynamically routed to: {best_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
                     st.write(response.text)
+                    
                 except Exception as e:
-                    st.error(f"API Error: Please check if your API key is valid. Details: {e}")
+                    st.error(f"API Routing Error: {e}")
     else:
-        st.warning("⚠️ Authentication Required: Please paste your Gemini API Key in the left sidebar to activate the AI Analyst.")
+        st.warning("⚠️ Please paste your Gemini API Key in the left sidebar to activate the AI Analyst.")
