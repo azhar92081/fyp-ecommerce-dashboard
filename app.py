@@ -79,7 +79,6 @@ st.sidebar.header("🧠 AI Configuration")
 if "my_api_key" not in st.session_state:
     st.session_state.my_api_key = ""
 
-# Sidebar input that ALWAYS shows up and syncs with session state
 api_input = st.sidebar.text_input("Enter Gemini API Key", type="password", value=st.session_state.my_api_key)
 
 if api_input != st.session_state.my_api_key:
@@ -156,20 +155,38 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- INTELLIGENT AI CALLER ---
+# --- THE DYNAMIC AUTO-DISCOVERY ENGINE ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
-    # Aggressively scrub the key of invisible characters
     clean_key = raw_key.strip().replace('"', '').replace("'", "")
     genai.configure(api_key=clean_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    # Auto-discover models available to this specific key
+    valid_models = []
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods and 'gemini' in m.name.lower() and 'vision' not in m.name.lower():
+            valid_models.append(m.name)
+                
+    if not valid_models: 
+        raise Exception("Google API returned no valid Gemini text models for your account.")
+
+    # Smart selection
+    target_model = valid_models[0]
+    for m in valid_models:
+        if '1.5-flash' in m:
+            target_model = m
+            break
+        elif 'pro' in m:
+            target_model = m
+            
+    model = genai.GenerativeModel(target_model)
     context_prompt = f"""
     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
     Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
     Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
     """
     response = model.generate_content(context_prompt)
-    return response.text
+    return response.text, target_model
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
@@ -240,8 +257,8 @@ with tab7:
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             with st.spinner("Executing secure handshake with Google AI..."):
                 try:
-                    report_text = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
-                    st.success(f"✅ AI Analysis Complete (Connected securely to gemini-1.5-flash)")
+                    report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
+                    st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
                     st.write(report_text)
                 except Exception as e:
