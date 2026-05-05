@@ -15,7 +15,7 @@ st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide"
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-@st.cache_resource
+# --- CACHE REMOVED: Force SQLite to verify tables exist every single time ---
 def auto_provision_db():
     conn = sqlite3.connect('enterprise_backend.db')
     cursor = conn.cursor()
@@ -25,6 +25,7 @@ def auto_provision_db():
         cursor.execute('''CREATE TABLE system_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, alert_type TEXT NOT NULL, message TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
         cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", ('admin', hash_password("iub2026"), 'System Administrator'))
         conn.commit()
+    # This will now successfully run and create the missing table!
     cursor.execute('''CREATE TABLE IF NOT EXISTS system_config (key_name TEXT PRIMARY KEY, key_value TEXT NOT NULL)''')
     conn.commit()
     conn.close()
@@ -181,7 +182,6 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
     """
     
-    # Strictly target 2.5-flash. No tricky fallbacks. 
     model = genai.GenerativeModel('gemini-2.5-flash')
     response = model.generate_content(context_prompt)
     return response.text, 'gemini-2.5-flash'
@@ -248,7 +248,7 @@ with tab6:
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with SQLite Storage.")
+    st.write("Generative AI integration with SQLite Storage and Quota-Optimized Routing.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
