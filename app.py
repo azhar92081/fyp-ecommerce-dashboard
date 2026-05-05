@@ -13,9 +13,6 @@ import google.generativeai as genai
 
 st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
-# --- 🔴 ENTERPRISE HARDCODED KEY ---
-DEMO_API_KEY = "PASTE_YOUR_API_KEY_RIGHT_HERE"
-
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
@@ -77,7 +74,9 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-api_key = DEMO_API_KEY if DEMO_API_KEY != "PASTE_YOUR_API_KEY_RIGHT_HERE" else None
+# --- THE API KEY IS BACK IN THE SIDEBAR EXACTLY AS YOU REQUESTED ---
+st.sidebar.header("🧠 AI Configuration")
+api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
 
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
@@ -138,7 +137,7 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- INTELLIGENT API MEMORY CACHE ---
+# --- INTELLIGENT API MEMORY CACHE (Solves the 60-second limit) ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, key):
     genai.configure(api_key=key)
@@ -214,7 +213,7 @@ with tab7:
             
             with st.spinner("Analyzing metrics and querying AI Memory Cache..."):
                 try:
-                    # This now calls the cached function. It only hits Google if the numbers change!
+                    # Calls the cached function so you don't hit the 60-second limit
                     report_text = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
                     
                     st.success("✅ AI Analysis Complete (Live API / Cache Hit)")
@@ -234,4 +233,4 @@ with tab7:
                     st.write("**Strategic Machine Learning Recommendation:**")
                     st.write("Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
     else:
-        st.error("🚨 CRITICAL ERROR: You forgot to paste your API Key into line 17 of the code!")
+        st.warning("⚠️ Please paste your Gemini API Key in the left sidebar to activate the AI Analyst.")
