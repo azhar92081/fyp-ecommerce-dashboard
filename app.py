@@ -11,14 +11,11 @@ import hashlib
 import os
 import google.generativeai as genai
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Enterprise Intelligence V10.1 (AI Edition)", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Enterprise Intelligence V10.2 (AI Edition)", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
-# --- SECURITY UTILS ---
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- CLOUD AUTO-PROVISIONING ENGINE ---
 @st.cache_resource
 def auto_provision_db():
     conn = sqlite3.connect('enterprise_backend.db')
@@ -33,38 +30,29 @@ def auto_provision_db():
 
 auto_provision_db()
 
-# --- CUSTOM CSS & DYNAMIC THEME ---
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
 if night_mode:
     theme_css = "<style>.stApp { background-color: #0E1117; color: #FFFFFF; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
-    chart_template = "plotly_dark"
-    font_color = "#FFFFFF"; hover_bg = "#1E1E1E"; bg_color = "#0E1117"
     chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"] 
 else:
     theme_css = "<style>.stApp { background-color: #F4F6F9; color: #000000; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
-    chart_template = "plotly_white"
-    font_color = "#000000"; hover_bg = "#FFFFFF"; bg_color = "#F4F6F9"
     chart_palette = ["#0056D2", "#D32F2F", "#FBC02D", "#6A1B9A", "#2E7D32", "#E65100"] 
     
 st.markdown(theme_css, unsafe_allow_html=True)
 
-# --- ENTERPRISE SECURITY: SQL LOGIN ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
-    st.session_state['role'] = None
 
 if not st.session_state['logged_in']:
     st.markdown(f"<h1 style='text-align: center; color: {chart_palette[0]};'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Live Database Connection Active. Awaiting Authentication.</p>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         with st.form("login_form"):
             user = st.text_input("Username")
             pwd = st.text_input("Password", type="password")
             submit = st.form_submit_button("Authenticate via SQL")
-            
             if submit:
                 conn = sqlite3.connect('enterprise_backend.db')
                 cursor = conn.cursor()
@@ -79,7 +67,6 @@ if not st.session_state['logged_in']:
                     st.error("❌ Invalid security credentials.")
     st.stop()
 
-# --- MAIN DASHBOARD ---
 st.sidebar.success(f"✅ Authenticated as: {st.session_state['role']}")
 if st.sidebar.button("🚪 Secure Logout"):
     st.session_state['logged_in'] = False
@@ -87,11 +74,9 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# --- AI CONFIGURATION ---
 st.sidebar.header("🧠 AI Configuration")
 api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
 
-# --- DYNAMIC DATA INGESTION ---
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
 
@@ -104,7 +89,6 @@ if uploaded_file is not None:
         st.cache_data.clear()
         st.sidebar.success("✅ Database Successfully Updated!")
 
-# --- LIVE SQL DATA FETCHING ---
 @st.cache_data(ttl=300) 
 def load_data_from_sql():
     try:
@@ -132,7 +116,6 @@ if raw_df.empty:
     st.info("👈 System Architecture Online. Please upload a CSV file to initialize the SQL database.")
     st.stop()
 
-# --- FILTERS ---
 st.sidebar.header("2. Interactive Filters")
 all_countries = sorted(raw_df['Country'].unique())
 selected_countries = st.sidebar.multiselect("🌍 Filter by Region", all_countries, default=all_countries[:5])
@@ -153,7 +136,6 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- UI TABS ---
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
 with tab1:
@@ -169,18 +151,15 @@ with tab1:
 
 with tab2:
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
-    st.subheader("Top Performing Products")
     st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
 with tab3:
-    st.subheader("Unsupervised Customer Segmentation")
     rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: ((df['InvoiceDate'].max() + dt.timedelta(days=1)) - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
     rfm_df.rename(columns={'InvoiceDate': 'Recency', 'InvoiceNo': 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
 
 with tab4:
-    st.subheader("Simulated Google Analytics")
     st.plotly_chart(px.area(df.groupby('Date')['WebsiteVisitors'].first().reset_index(), x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]]), use_container_width=True)
 
 with tab5:
@@ -201,34 +180,31 @@ with tab6:
             st.dataframe(pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn), use_container_width=True, hide_index=True)
     except: pass
 
-# --- TAB 7: DYNAMIC GEMINI AI INTEGRATION ---
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with Dynamic Model Routing.")
+    st.write("Generative AI integration with Strict Model Routing.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
-            with st.spinner("Connecting to Google AI and routing to optimal model..."):
+            with st.spinner("Connecting to Google AI and routing to strict Gemini text model..."):
                 try:
                     genai.configure(api_key=api_key)
                     
-                    # 1. DYNAMIC MODEL AUTO-DISCOVERY
-                    # The app asks Google which text-generation models your key has access to
-                    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                    # STRICT GEMINI FILTER: Only models with 'gemini' in name, excluding vision models
+                    gemini_models = [m.name for m in genai.list_models() if 'gemini' in m.name.lower() and 'vision' not in m.name.lower()]
                     
-                    if not available_models:
-                        st.error("API Error: Your key is valid, but it does not have access to any Generative text models. Please check your Google AI Studio billing/permissions.")
+                    if not gemini_models:
+                        st.error("API Error: No compatible Gemini text models found for your region/key.")
                         st.stop()
                         
-                    # 2. AUTO-SELECT THE BEST MODEL
-                    best_model = available_models[0] # Fallback to first available
-                    for m in available_models:
+                    # Target the most stable endpoint available in the filtered list
+                    best_model = gemini_models[0]
+                    for m in gemini_models:
                         if '1.5-flash' in m: best_model = m; break
                         elif 'pro' in m: best_model = m
                         
                     model = genai.GenerativeModel(best_model)
                     
-                    # 3. GENERATE INTELLIGENCE
                     top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
                     context_prompt = f"""
                     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
@@ -242,11 +218,11 @@ with tab7:
                     """
                     response = model.generate_content(context_prompt)
                     
-                    st.success(f"✅ AI Analysis Complete (Dynamically routed to: {best_model})")
+                    st.success(f"✅ AI Analysis Complete (Secured Connection: {best_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
                     st.write(response.text)
                     
                 except Exception as e:
-                    st.error(f"API Routing Error: {e}")
+                    st.error(f"Execution Error: {e}")
     else:
         st.warning("⚠️ Please paste your Gemini API Key in the left sidebar to activate the AI Analyst.")
