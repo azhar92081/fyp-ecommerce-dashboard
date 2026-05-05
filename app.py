@@ -73,27 +73,29 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# --- THE PURE API KEY HANDLER ---
+# --- BULLETPROOF SESSION MEMORY FOR API KEY ---
 st.sidebar.header("🧠 AI Configuration")
 
+# Initialize the state if it doesn't exist
 if "my_api_key" not in st.session_state:
-    st.session_state.my_api_key = ""
+    st.session_state.my_api_key = None
 
-api_input = st.sidebar.text_input("Enter Gemini API Key", type="password", value=st.session_state.my_api_key)
-
-if api_input != st.session_state.my_api_key:
-    st.session_state.my_api_key = api_input
-    st.rerun()
+# If there is no key, show the secure form
+if not st.session_state.my_api_key:
+    with st.sidebar.form("api_key_form"):
+        key_input = st.text_input("Enter Gemini API Key", type="password")
+        submit_key = st.form_submit_button("💾 Save Key")
+        if submit_key and key_input:
+            st.session_state.my_api_key = key_input.strip()
+            st.rerun()
+# If the key exists, hide the form completely so Streamlit can't wipe it
+else:
+    st.sidebar.success("✅ Key Locked in Browser Memory")
+    if st.sidebar.button("🔄 Change Key"):
+        st.session_state.my_api_key = None
+        st.rerun()
 
 api_key = st.session_state.my_api_key
-
-if api_key:
-    st.sidebar.success("✅ Key Active in Browser Session")
-    if st.sidebar.button("🗑️ Clear Key"):
-        st.session_state.my_api_key = ""
-        st.rerun()
-else:
-    st.sidebar.warning("⚠️ Paste Key to Activate AI")
 
 # --- DATABASE AND UI LOGIC ---
 st.sidebar.header("1. Database Management")
@@ -270,4 +272,4 @@ with tab7:
                     st.write(f"**Inventory & Product Performance:**\nThe catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
                     st.write("**Strategic Machine Learning Recommendation:**\nBased on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
     else:
-        st.warning("⚠️ Paste your API Key in the left sidebar to activate the AI Analyst.")
+        st.warning("⚠️ Paste your API Key in the left sidebar and click 'Save Key' to activate.")
