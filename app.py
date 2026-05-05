@@ -232,7 +232,7 @@ with tab7:
             with st.spinner("Connecting to Google Generative AI... analyzing database context..."):
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    model = genai.GenerativeModel('gemini-pro')
                     top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
                     context_prompt = f"""
                     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
