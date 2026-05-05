@@ -8,13 +8,10 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import sqlite3
 import hashlib
+import os
 import google.generativeai as genai
 
-st.set_page_config(page_title="Enterprise Intelligence V11.0", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
-
-# --- 🔴 LIVE DEMO CONFIGURATION ---
-# The system will automatically use this key. No more typing it in the UI!
-DEMO_API_KEY = "PASTE_YOUR_ACTUAL_API_KEY_HERE"
+st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -77,8 +74,16 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# Resolving API Key Silently
-api_key = DEMO_API_KEY if DEMO_API_KEY != "PASTE_YOUR_ACTUAL_API_KEY_HERE" else None
+# --- ENTERPRISE SECRETS MANAGEMENT ---
+st.sidebar.header("🧠 AI Configuration")
+try:
+    # The app will invisibly look for the key in the Streamlit Cloud Vault
+    api_key = st.secrets["GEMINI_API_KEY"]
+    st.sidebar.success("✅ Secure AI Vault Connected")
+except:
+    # Fallback just in case the vault isn't set up yet
+    api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
+    st.sidebar.warning("⚠️ Connect Streamlit Secrets to remove this box.")
 
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
@@ -151,25 +156,22 @@ with tab1:
     roi_value = ((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0
     conv_value = (total_buyers / total_visitors) * 100 if total_visitors > 0 else 0
     
-    # Restored Growth Indicators (Deltas)
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Gross Revenue", f"${total_revenue:,.0f}", "12.5% vs Last Month")
-    col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}", "-2.4% Optimization")
-    col3.metric("ROI", f"{roi_value:,.1f}%", "8.1% Lift")
-    col4.metric("Conversion", f"{conv_value:,.2f}%", "0.5% Lift")
+    col1.metric("Gross Revenue", f"${total_revenue:,.0f}")
+    col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}")
+    col3.metric("ROI", f"{roi_value:,.1f}%")
+    col4.metric("Conversion", f"{conv_value:,.2f}%")
     
     st.markdown("---")
     st.subheader("Gross Revenue Trajectory")
-    
-    # Restored Primary Area Chart to fill the blank space
     daily_revenue_chart = df.groupby('Date')['TotalSales'].sum().reset_index()
     fig_rev = px.area(daily_revenue_chart, x='Date', y='TotalSales', color_discrete_sequence=[chart_palette[0]])
     fig_rev.update_layout(margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig_rev, use_container_width=True)
 
 with tab2:
-    st.subheader("Top Performing Products")
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
+    st.subheader("Top Performing Products")
     st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
 with tab3:
@@ -207,7 +209,6 @@ with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
     
     if api_key:
-        st.success("✅ Secure AI Tunnel Established via Hardcoded Environment Variable.")
         if st.button("✨ Generate Live Executive Report"):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             
@@ -239,5 +240,3 @@ with tab7:
                     
                     st.write("**Strategic Machine Learning Recommendation:**")
                     st.write("Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
-    else:
-        st.error("🚨 CRITICAL ERROR: You forgot to paste your API Key into line 17 of the code!")
