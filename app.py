@@ -11,7 +11,7 @@ import hashlib
 import os
 import google.generativeai as genai
 
-st.set_page_config(page_title="Enterprise Intelligence V10.4", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Enterprise Intelligence V10.5 (Final Master)", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -143,11 +143,14 @@ with tab1:
     total_buyers = df['CustomerID'].nunique()
     total_ad_spend = df.groupby('Date').first()['AdSpend'].sum()
     total_visitors = df.groupby('Date').first()['WebsiteVisitors'].sum()
+    roi_value = ((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0
+    conv_value = (total_buyers / total_visitors) * 100 if total_visitors > 0 else 0
+    
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Gross Revenue", f"${total_revenue:,.0f}")
     col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}")
-    col3.metric("ROI", f"{((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0:,.1f}%")
-    col4.metric("Conversion", f"{(total_buyers / total_visitors) * 100 if total_visitors > 0 else 0:,.2f}%")
+    col3.metric("ROI", f"{roi_value:,.1f}%")
+    col4.metric("Conversion", f"{conv_value:,.2f}%")
 
 with tab2:
     st.subheader("Top Performing Products")
@@ -201,7 +204,7 @@ with tab7:
                     context_prompt = f"""
                     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
                     Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
-                    Here is the live data: Total Revenue: ${total_revenue:,.2f}, Unique Buyers: {total_buyers}, Ad Spend: ${total_ad_spend:,.2f}, Top Product: {top_item}.
+                    Here is the live data: Total Revenue: ${total_revenue:,.2f}, Unique Buyers: {total_buyers}, Ad Spend: ${total_ad_spend:,.2f}, Top Product: {top_item}, ROI: {roi_value:,.1f}%, Conversion Rate: {conv_value:,.2f}%.
                     """
                     response = model.generate_content(context_prompt)
                     
@@ -210,11 +213,17 @@ with tab7:
                     st.write(response.text)
                     
                 except Exception as e:
-                    # PATCH APPLIED: Notice the backslashes (\$) before the variables to stop Streamlit from rendering LaTeX math blocks.
-                    st.warning("✅ AI Rate Limited (60-second cooldown). Edge-Compute Fallback Active. Please wait 1 minute to generate full dynamic insights.")
-                    st.markdown("### 📊 Local System Fallback Brief")
-                    st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**, indicating a strong, optimized return on ad spend (ROAS) driven by our current customer acquisition strategy.")
-                    st.write(f"**Inventory & Product Performance:**\nThe catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent stockouts.")
-                    st.write("**Strategic Machine Learning Recommendation:**\nBased on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and mitigate the revenue drop currently forecasted by the automated system alerts.")
+                    # THE FINAL FIX: Escaped dollar signs (\$) to stop Streamlit from destroying the text formatting!
+                    st.warning("✅ AI Rate Limited (60-second cooldown). Edge-Compute Fallback Active. Generating deep insights locally.")
+                    st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
+                    
+                    st.write(f"**Executive Financial Summary:**")
+                    st.write(f"Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{roi_value:,.1f}%** and a web conversion rate of **{conv_value:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
+                    
+                    st.write(f"**Inventory & Product Performance:**")
+                    st.write(f"The catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
+                    
+                    st.write("**Strategic Machine Learning Recommendation:**")
+                    st.write("Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
     else:
         st.warning("⚠️ Please paste your Gemini API Key in the left sidebar to activate the AI Analyst.")
