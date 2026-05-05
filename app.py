@@ -73,7 +73,7 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# --- THE PURE, UNBREAKABLE API KEY HANDLER ---
+# --- THE PURE API KEY HANDLER ---
 st.sidebar.header("🧠 AI Configuration")
 
 if "my_api_key" not in st.session_state:
@@ -155,28 +155,29 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- THE DYNAMIC AUTO-DISCOVERY ENGINE ---
+# --- THE IRON-CLAD DISCOVERY ENGINE ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     clean_key = raw_key.strip().replace('"', '').replace("'", "")
     genai.configure(api_key=clean_key)
     
-    # Auto-discover models available to this specific key
     valid_models = []
     for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods and 'gemini' in m.name.lower() and 'vision' not in m.name.lower():
-            valid_models.append(m.name)
+        # WE STRICTLY FILTER OUT ANY MODEL WITH 'IMAGE', 'VISION', OR 'EMBEDDING'
+        if 'generateContent' in m.supported_generation_methods:
+            name_check = m.name.lower()
+            if 'vision' not in name_check and 'image' not in name_check and 'embedding' not in name_check and 'aqa' not in name_check:
+                valid_models.append(m.name)
                 
     if not valid_models: 
         raise Exception("Google API returned no valid Gemini text models for your account.")
 
-    # Smart selection
     target_model = valid_models[0]
     for m in valid_models:
-        if '1.5-flash' in m:
+        if '1.5-flash' in m.lower():
             target_model = m
             break
-        elif 'pro' in m:
+        elif '1.0-pro' in m.lower():
             target_model = m
             
     model = genai.GenerativeModel(target_model)
@@ -250,7 +251,7 @@ with tab6:
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with Memory Caching and Data Sanitization.")
+    st.write("Generative AI integration with Iron-Clad Text Routing.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
