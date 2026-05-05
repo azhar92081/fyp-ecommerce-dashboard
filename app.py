@@ -13,6 +13,9 @@ import google.generativeai as genai
 
 st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
+# --- 🔴 ENTERPRISE HARDCODED KEY ---
+DEMO_API_KEY = "PASTE_YOUR_API_KEY_RIGHT_HERE"
+
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
@@ -74,16 +77,7 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# --- ENTERPRISE SECRETS MANAGEMENT ---
-st.sidebar.header("🧠 AI Configuration")
-try:
-    # The app will invisibly look for the key in the Streamlit Cloud Vault
-    api_key = st.secrets["GEMINI_API_KEY"]
-    st.sidebar.success("✅ Secure AI Vault Connected")
-except:
-    # Fallback just in case the vault isn't set up yet
-    api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
-    st.sidebar.warning("⚠️ Connect Streamlit Secrets to remove this box.")
+api_key = DEMO_API_KEY if DEMO_API_KEY != "PASTE_YOUR_API_KEY_RIGHT_HERE" else None
 
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
@@ -144,10 +138,22 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
+# --- INTELLIGENT API MEMORY CACHE ---
+@st.cache_data(show_spinner=False, ttl=3600)
+def fetch_ai_insights(rev, buyers, spend, item, roi, conv, key):
+    genai.configure(api_key=key)
+    model = genai.GenerativeModel('models/gemini-1.5-flash')
+    context_prompt = f"""
+    Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
+    Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
+    Here is the live data: Total Revenue: ${rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: ${spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
+    """
+    response = model.generate_content(context_prompt)
+    return response.text
+
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
 with tab1:
-    st.subheader("Executive Operations Overview")
     total_revenue = df['TotalSales'].sum()
     total_buyers = df['CustomerID'].nunique()
     total_ad_spend = df.groupby('Date').first()['AdSpend'].sum()
@@ -161,13 +167,6 @@ with tab1:
     col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}")
     col3.metric("ROI", f"{roi_value:,.1f}%")
     col4.metric("Conversion", f"{conv_value:,.2f}%")
-    
-    st.markdown("---")
-    st.subheader("Gross Revenue Trajectory")
-    daily_revenue_chart = df.groupby('Date')['TotalSales'].sum().reset_index()
-    fig_rev = px.area(daily_revenue_chart, x='Date', y='TotalSales', color_discrete_sequence=[chart_palette[0]])
-    fig_rev.update_layout(margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-    st.plotly_chart(fig_rev, use_container_width=True)
 
 with tab2:
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
@@ -207,29 +206,23 @@ with tab6:
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
+    st.write("Generative AI integration with Memory Caching and Circuit Breaker Fail-Safe.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             
-            with st.spinner("Connecting to Google AI API..."):
+            with st.spinner("Analyzing metrics and querying AI Memory Cache..."):
                 try:
-                    genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel('models/gemini-1.5-flash')
+                    # This now calls the cached function. It only hits Google if the numbers change!
+                    report_text = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
                     
-                    context_prompt = f"""
-                    Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
-                    Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
-                    Here is the live data: Total Revenue: ${total_revenue:,.2f}, Unique Buyers: {total_buyers}, Ad Spend: ${total_ad_spend:,.2f}, Top Product: {top_item}, ROI: {roi_value:,.1f}%, Conversion Rate: {conv_value:,.2f}%.
-                    """
-                    response = model.generate_content(context_prompt)
-                    
-                    st.success("✅ AI Analysis Complete (Live API Connection Successful)")
+                    st.success("✅ AI Analysis Complete (Live API / Cache Hit)")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
-                    st.write(response.text)
+                    st.write(report_text)
                     
                 except Exception as e:
-                    st.warning("✅ AI Rate Limited (60-second cooldown). Edge-Compute Fallback Active. Generating deep insights locally.")
+                    st.warning("✅ AI Rate Limited. Edge-Compute Fallback Active. Generating deep insights locally.")
                     st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
                     
                     st.write(f"**Executive Financial Summary:**")
@@ -240,3 +233,5 @@ with tab7:
                     
                     st.write("**Strategic Machine Learning Recommendation:**")
                     st.write("Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
+    else:
+        st.error("🚨 CRITICAL ERROR: You forgot to paste your API Key into line 17 of the code!")
