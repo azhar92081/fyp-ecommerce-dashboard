@@ -169,7 +169,7 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- THE QUOTA-SAVING DIRECT ROUTER ---
+# --- HARDWIRED AI ROUTER ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     clean_key = raw_key.strip().replace('"', '').replace("'", "")
@@ -181,16 +181,10 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
     """
     
-    # We bypass the scanner completely and attempt the exact model your account verified in the error log.
-    # This costs exactly 1 API call instead of 20+.
-    try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        response = model.generate_content(context_prompt)
-        return response.text, 'gemini-2.5-flash'
-    except:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(context_prompt)
-        return response.text, 'gemini-1.5-flash'
+    # Strictly target 2.5-flash. No tricky fallbacks. 
+    model = genai.GenerativeModel('gemini-2.5-flash')
+    response = model.generate_content(context_prompt)
+    return response.text, 'gemini-2.5-flash'
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
@@ -254,12 +248,12 @@ with tab6:
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with SQLite Storage and Quota-Optimized Routing.")
+    st.write("Generative AI integration with SQLite Storage.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
-            with st.spinner("Executing optimized, single-call handshake with Google AI..."):
+            with st.spinner("Executing direct handshake with Google AI..."):
                 try:
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
                     st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
