@@ -74,7 +74,6 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# --- SOLUTION 1: SESSION STATE MEMORY (Fixes asking for API key repeatedly) ---
 if "gemini_api_key" not in st.session_state:
     st.session_state.gemini_api_key = ""
 
@@ -151,22 +150,40 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- INTELLIGENT API MEMORY CACHE (Solves the 60-second limit once successful) ---
+# --- SOLUTION: AUTO-HEALING MODEL ROUTER ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, key):
     genai.configure(api_key=key)
-    model = genai.GenerativeModel('models/gemini-1.5-flash')
+    
+    # Priority cascade of models. It tries each one in order until it gets a 200 OK response.
+    fallback_models = [
+        'models/gemini-1.5-flash', 
+        'models/gemini-1.5-pro', 
+        'models/gemini-1.0-pro', 
+        'models/gemini-pro'
+    ]
+    
     context_prompt = f"""
     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
     Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
     Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
     """
-    response = model.generate_content(context_prompt)
-    return response.text
+    
+    last_error = ""
+    for model_name in fallback_models:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(context_prompt)
+            return response.text, model_name
+        except Exception as e:
+            last_error = str(e)
+            continue # If a model hits a 404 or 429, seamlessly skip to the next one
+            
+    # If it burns through all 4 models and fails, it throws the actual error back to the UI.
+    raise Exception(last_error)
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
-# --- SOLUTION 2: RESTORED TAB 1 DATA INSIGHTS ---
 with tab1:
     st.subheader("Executive Operations Overview")
     total_revenue = df['TotalSales'].sum()
@@ -228,22 +245,26 @@ with tab6:
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with Memory Caching and Circuit Breaker Fail-Safe.")
+    st.write("Generative AI integration with Auto-Healing Model Routing and Circuit Breaker.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             
-            with st.spinner("Analyzing metrics and querying AI Memory Cache..."):
+            with st.spinner("Analyzing metrics and negotiating with Google AI servers..."):
                 try:
-                    report_text = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
+                    # Attempt the auto-healing API cascade
+                    report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
                     
-                    st.success("✅ AI Analysis Complete (Live API / Cache Hit)")
+                    st.success(f"✅ AI Analysis Complete (Live API / Handshake verified with: {successful_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
                     st.write(report_text)
                     
                 except Exception as e:
-                    st.warning("✅ AI Rate Limited. Edge-Compute Fallback Active. Generating deep insights locally.")
+                    # VERBOSE LOGGING: If it fails entirely, it prints the EXACT reason why.
+                    st.error(f"🚨 Google API Handshake Failed. Raw Error Data: {e}")
+                    st.warning("✅ Edge-Compute Fallback Active. Generating deep insights locally to protect the FYP presentation.")
+                    
                     st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
                     
                     st.write(f"**Executive Financial Summary:**")
