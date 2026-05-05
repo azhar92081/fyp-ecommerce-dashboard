@@ -74,22 +74,14 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-if "gemini_api_key" not in st.session_state:
-    st.session_state.gemini_api_key = ""
-
+# --- ENTERPRISE SECRETS CONNECTION ---
 st.sidebar.header("🧠 AI Configuration")
-if not st.session_state.gemini_api_key:
-    api_key_input = st.sidebar.text_input("Enter Gemini API Key", type="password")
-    if st.sidebar.button("💾 Save Key to Memory"):
-        st.session_state.gemini_api_key = api_key_input
-        st.rerun()
-else:
-    st.sidebar.success("✅ Secure AI Vault Active")
-    if st.sidebar.button("🔄 Reset Key"):
-        st.session_state.gemini_api_key = ""
-        st.rerun()
-
-api_key = st.session_state.gemini_api_key
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+    st.sidebar.success("✅ Enterprise Secure Vault Connected")
+except:
+    api_key = None
+    st.sidebar.error("🚨 Vault Empty: Configure Streamlit Secrets!")
 
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
@@ -150,30 +142,22 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- SOLUTION: DYNAMIC AUTO-DISCOVERY ENGINE ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, key):
     genai.configure(api_key=key)
-    
-    # 1. Ask Google what models are actually available for this specific API key
     valid_models = []
     for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            # We strictly want a text model, no vision/image models
-            if 'gemini' in m.name.lower() and 'vision' not in m.name.lower():
-                valid_models.append(m.name)
+        if 'generateContent' in m.supported_generation_methods and 'gemini' in m.name.lower() and 'vision' not in m.name.lower():
+            valid_models.append(m.name)
                 
-    if not valid_models:
-        raise Exception("Google API returned no valid Gemini text models for your account/region.")
+    if not valid_models: raise Exception("No valid Gemini text models found.")
 
-    # 2. Automatically select the best model from the live list (prioritizing 1.5-flash)
     target_model = valid_models[0]
     for m in valid_models:
         if '1.5-flash' in m:
             target_model = m
             break
             
-    # 3. Fire the request using the verified model name
     model = genai.GenerativeModel(target_model)
     context_prompt = f"""
     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
@@ -191,7 +175,6 @@ with tab1:
     total_buyers = df['CustomerID'].nunique()
     total_ad_spend = df.groupby('Date').first()['AdSpend'].sum()
     total_visitors = df.groupby('Date').first()['WebsiteVisitors'].sum()
-    
     roi_value = ((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0
     conv_value = (total_buyers / total_visitors) * 100 if total_visitors > 0 else 0
     
@@ -251,25 +234,18 @@ with tab7:
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
-            
             with st.spinner("Analyzing metrics and dynamically locating available Google AI models..."):
                 try:
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
-                    
                     st.success(f"✅ AI Analysis Complete (Live API Handshake verified with: {successful_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
                     st.write(report_text)
-                    
                 except Exception as e:
                     st.error(f"🚨 Google API Handshake Failed. Raw Error Data: {e}")
-                    st.warning("✅ Edge-Compute Fallback Active. Generating deep insights locally to protect the FYP presentation.")
-                    
+                    st.warning("✅ Edge-Compute Fallback Active. Generating deep insights locally.")
                     st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
-                    st.write(f"**Executive Financial Summary:**")
-                    st.write(f"Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{roi_value:,.1f}%** and a web conversion rate of **{conv_value:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
-                    st.write(f"**Inventory & Product Performance:**")
-                    st.write(f"The catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
-                    st.write("**Strategic Machine Learning Recommendation:**")
-                    st.write("Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
+                    st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{roi_value:,.1f}%** and a web conversion rate of **{conv_value:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
+                    st.write(f"**Inventory & Product Performance:**\nThe catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
+                    st.write("**Strategic Machine Learning Recommendation:**\nBased on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
     else:
-        st.warning("⚠️ Please paste and save your Gemini API Key in the left sidebar to activate the AI Analyst.")
+        st.warning("⚠️ Waiting for Cloud Vault API Key Configuration...")
