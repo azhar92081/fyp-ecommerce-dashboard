@@ -1,151 +1,316 @@
 import streamlit as st
 import pandas as pd
+import datetime as dt
 import numpy as np
 import plotly.express as px
-from sklearn.linear_model import LinearRegression
+import plotly.graph_objects as go
 from sklearn.cluster import KMeans
-from sklearn.metrics import r2_score, mean_absolute_error, silhouette_score
-import datetime
+from sklearn.preprocessing import StandardScaler
+import sqlite3
+import hashlib
+import os
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="E-Commerce Intelligence Pro", layout="wide")
+st.set_page_config(page_title="Enterprise Intelligence V9.0", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
-st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stMetric { background-color: #ffffff !important; padding: 20px !important; border-radius: 10px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; }
-    [data-testid="stMetricLabel"] * { color: #4b5563 !important; font-weight: bold !important; }
-    [data-testid="stMetricValue"] * { color: #111827 !important; }
-    h1 { color: #1E3A8A !important; font-family: 'Helvetica Neue', sans-serif !important; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- SECURITY UTILS ---
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-st.title("🚀 E-Commerce Sales & Customer Intelligence")
+# --- CLOUD AUTO-PROVISIONING ENGINE ---
+@st.cache_resource
+def auto_provision_db():
+    """Builds the core database architecture on boot."""
+    conn = sqlite3.connect('enterprise_backend.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+    if not cursor.fetchone():
+        cursor.execute('''CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL)''')
+        cursor.execute('''CREATE TABLE system_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, alert_type TEXT NOT NULL, message TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+        # Provision default admin
+        cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", ('admin', hash_password("iub2026"), 'System Administrator'))
+        conn.commit()
+    conn.close()
 
-# --- 1. DATA GENERATION ---
-@st.cache_data
-def load_advanced_data():
-    np.random.seed(42)
-    dates = pd.date_range(start='2025-01-01', end='2026-04-01', freq='D')
-    data = {
-        'OrderDate': np.random.choice(dates, 500),
-        'CustomerID': np.random.randint(1000, 1050, 500),
-        'TotalAmount': np.random.uniform(10.0, 500.0, 500),
-        'Category': np.random.choice(['Electronics', 'Clothing', 'Home', 'Sports'], 500),
-        'Region': np.random.choice(['North', 'South', 'East', 'West'], 500)
-    }
-    df = pd.DataFrame(data)
-    return df.sort_values('OrderDate').reset_index(drop=True)
+auto_provision_db()
 
-# --- 2. SIDEBAR & CRASH PREVENTION ---
-st.sidebar.header("📂 Data Management")
-uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
+# --- CUSTOM CSS & DYNAMIC THEME ---
+st.sidebar.header("⚙️ System Settings")
+night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    # Crash Prevention Check
-    required_cols = ['OrderDate', 'CustomerID', 'TotalAmount', 'Category', 'Region']
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols:
-        st.sidebar.error(f"⚠️ Uploaded CSV is missing columns: {', '.join(missing_cols)}.")
-        st.stop()
-    df['OrderDate'] = pd.to_datetime(df['OrderDate'])
+if night_mode:
+    theme_css = "<style>.stApp { background-color: #0E1117; color: #FFFFFF; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
+    chart_template = "plotly_dark"
+    font_color = "#FFFFFF" 
+    hover_bg = "#1E1E1E" 
+    bg_color = "#0E1117"
+    chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"] 
 else:
-    df = load_advanced_data()
+    theme_css = "<style>.stApp { background-color: #F4F6F9; color: #000000; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
+    chart_template = "plotly_white"
+    font_color = "#000000" 
+    hover_bg = "#FFFFFF" 
+    bg_color = "#F4F6F9"
+    chart_palette = ["#0056D2", "#D32F2F", "#FBC02D", "#6A1B9A", "#2E7D32", "#E65100"] 
+    
+st.markdown(theme_css, unsafe_allow_html=True)
 
-st.sidebar.markdown("---")
-st.sidebar.header("🎯 Filters")
+# --- ENTERPRISE SECURITY: SQL DATABASE LOGIN ---
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+    st.session_state['role'] = None
 
-# Date Filter
-min_date = df['OrderDate'].min().date()
-max_date = df['OrderDate'].max().date()
-date_range = st.sidebar.date_input("Select Date Range", (min_date, max_date), min_value=min_date, max_value=max_date)
-
-if len(date_range) == 2:
-    start_date, end_date = date_range
-    df = df[(df['OrderDate'].dt.date >= start_date) & (df['OrderDate'].dt.date <= end_date)]
-
-selected_categories = st.sidebar.multiselect("Categories", df['Category'].unique(), default=df['Category'].unique())
-selected_regions = st.sidebar.multiselect("Regions", df['Region'].unique(), default=df['Region'].unique())
-
-df = df[(df['Category'].isin(selected_categories)) & (df['Region'].isin(selected_regions))]
-
-if df.empty:
-    st.warning("No data matches your filters! Please adjust your selections.")
+if not st.session_state['logged_in']:
+    st.markdown(f"<h1 style='text-align: center; color: {chart_palette[0]};'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center;'>Live Database Connection Active. Awaiting Authentication.</p>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        with st.form("login_form"):
+            user = st.text_input("Username")
+            pwd = st.text_input("Password", type="password")
+            submit = st.form_submit_button("Authenticate via SQL")
+            
+            if submit:
+                conn = sqlite3.connect('enterprise_backend.db')
+                cursor = conn.cursor()
+                cursor.execute("SELECT role FROM users WHERE username=? AND password_hash=?", (user, hash_password(pwd)))
+                result = cursor.fetchone()
+                conn.close()
+                if result:
+                    st.session_state['logged_in'] = True
+                    st.session_state['role'] = result[0]
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid security credentials.")
     st.stop()
 
-# --- 3. TABS ---
-tab1, tab2, tab3 = st.tabs(["📊 Overview", "📈 Predictive AI", "🤖 Customer Clusters"])
+# --- MAIN DASHBOARD ---
+st.sidebar.success(f"✅ Authenticated as: {st.session_state['role']}")
+if st.sidebar.button("🚪 Secure Logout"):
+    st.session_state['logged_in'] = False
+    st.rerun()
 
-# -- TAB 1: EXECUTIVE OVERVIEW --
+st.title("🛍️ Advanced E-commerce & Customer Intelligence")
+st.markdown("Full-Stack Analytics Engine powered by SQLite Relational Database.")
+
+# --- DYNAMIC DATA INGESTION (THE NEW FEATURE) ---
+st.sidebar.header("1. Database Management")
+uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
+
+if uploaded_file is not None:
+    with st.spinner("Injecting data into SQLite Database..."):
+        # 1. Read the uploaded file
+        new_data = pd.read_csv(uploaded_file)
+        # 2. Connect to DB and replace the old table with new data
+        conn = sqlite3.connect('enterprise_backend.db')
+        new_data.to_sql('ecommerce_sales', conn, if_exists='replace', index=False)
+        conn.close()
+        # 3. Clear Streamlit's memory so it pulls the fresh DB data
+        st.cache_data.clear()
+        st.sidebar.success("✅ Database Successfully Updated!")
+
+# --- LIVE SQL DATA FETCHING PIPELINE ---
+@st.cache_data(ttl=300) 
+def load_data_from_sql():
+    try:
+        conn = sqlite3.connect('enterprise_backend.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ecommerce_sales'")
+        if not cursor.fetchone():
+            return pd.DataFrame() # Table doesn't exist yet
+
+        df = pd.read_sql("SELECT * FROM ecommerce_sales", conn)
+        conn.close()
+        
+        if df.empty:
+            return df
+            
+        df.dropna(subset=['CustomerID', 'Description'], inplace=True)
+        df = df[df['Quantity'] > 0]
+        df['TotalSales'] = df['Quantity'] * df['UnitPrice']
+        df['InvoiceDate'] = pd.to_datetime(df['InvoiceDate'])
+        df['Date'] = df['InvoiceDate'].dt.date
+        
+        np.random.seed(42) 
+        unique_dates = df['Date'].unique()
+        marketing_data = pd.DataFrame({'Date': unique_dates})
+        daily_customers = df.groupby('Date')['CustomerID'].nunique().reset_index()
+        marketing_data = pd.merge(marketing_data, daily_customers, on='Date')
+        marketing_data['WebsiteVisitors'] = marketing_data['CustomerID'] * np.random.randint(20, 50, size=len(marketing_data))
+        marketing_data['AdSpend'] = marketing_data['WebsiteVisitors'] * np.random.uniform(0.5, 1.5, size=len(marketing_data))
+        marketing_data.drop(columns=['CustomerID'], inplace=True)
+        df = pd.merge(df, marketing_data, on='Date', how='left')
+        return df
+    except Exception as e:
+        return pd.DataFrame() 
+
+raw_df = load_data_from_sql()
+
+if raw_df.empty:
+    st.info("👈 System Architecture Online. Please upload a CSV file to initialize the SQL database.")
+    st.stop()
+else:
+    st.sidebar.success("📡 DB Connection: STABLE")
+
+# --- FILTERS ---
+st.sidebar.header("2. Interactive Filters")
+all_countries = sorted(raw_df['Country'].unique())
+selected_countries = st.sidebar.multiselect("🌍 Filter by Region", all_countries, default=all_countries[:5])
+min_date = raw_df['Date'].min()
+max_date = raw_df['Date'].max()
+date_range = st.sidebar.date_input("📅 Date Range", [min_date, max_date], min_value=min_date, max_value=max_date)
+
+if len(date_range) == 2 and len(selected_countries) > 0:
+    start_date, end_date = date_range
+    df = raw_df[(raw_df['Date'] >= start_date) & (raw_df['Date'] <= end_date) & (raw_df['Country'].isin(selected_countries))]
+else:
+    st.sidebar.warning("⚠️ Please select a valid date range and at least one country.")
+    st.stop()
+
+st.sidebar.header("3. Machine Learning Settings")
+k_value = st.sidebar.slider("Select Customer Clusters (K)", min_value=2, max_value=6, value=4)
+
+# --- SYSTEM ALERTS AUTOMATION ---
+def trigger_alert(message, alert_type="WARNING"):
+    conn = sqlite3.connect('enterprise_backend.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
+    conn.commit()
+    conn.close()
+
+# --- UI TABS ---
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web Analytics", "🔮 30-Day Forecast", "📩 System Alerts"])
+
+# TAB 1: EXECUTIVE KPIs 
 with tab1:
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Total Sales", f"${df['TotalAmount'].sum():,.2f}")
-    m2.metric("Total Orders", f"{len(df):,}")
-    m3.metric("Avg Order Value", f"${df['TotalAmount'].mean():,.2f}")
-    st.markdown("---")
+    total_revenue = df['TotalSales'].sum()
+    total_buyers = df['CustomerID'].nunique()
+    daily_marketing = df.groupby('Date').first().reset_index()
+    total_ad_spend = daily_marketing['AdSpend'].sum()
+    total_visitors = daily_marketing['WebsiteVisitors'].sum()
     
-    c1, c2 = st.columns(2)
-    with c1:
-        fig_cat = px.bar(df.groupby('Category')['TotalAmount'].sum().reset_index(), 
-                         x='Category', y='TotalAmount', color='Category',
-                         title="Revenue by Category", template="plotly_white")
-        st.plotly_chart(fig_cat, use_container_width=True)
-    with c2:
-        fig_reg = px.pie(df, values='TotalAmount', names='Region', hole=0.4,
-                         title="Regional Market Share", color_discrete_sequence=px.colors.sequential.RdBu)
-        st.plotly_chart(fig_reg, use_container_width=True)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Gross Revenue", f"${total_revenue:,.0f}")
+    col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}")
+    col3.metric("ROI", f"{((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0:,.1f}%")
+    col4.metric("Conversion Rate", f"{(total_buyers / total_visitors) * 100 if total_visitors > 0 else 0:,.2f}%")
+    
+    st.divider()
+    daily_trend = df.groupby('Date').agg({'TotalSales': 'sum', 'AdSpend': 'first'}).reset_index()
+    fig_trend = px.line(daily_trend, x='Date', y=['TotalSales', 'AdSpend'], title="Pattern Analysis: Spend vs Revenue", color_discrete_sequence=chart_palette)
+    fig_trend.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+    fig_trend.update_traces(line=dict(width=3)) 
+    st.plotly_chart(fig_trend, use_container_width=True)
 
-# -- TAB 2: SALES FORECASTING (Linear Regression) --
+# TAB 2: PATTERN RECOGNITION 
 with tab2:
-    st.header("🔮 14-Day Sales Projection")
-    daily_sales = df.groupby('OrderDate')['TotalAmount'].sum().reset_index()
-    daily_sales['Days'] = (daily_sales['OrderDate'] - daily_sales['OrderDate'].min()).dt.days
-    
-    if len(daily_sales) < 5:
-        st.warning("Not enough data to run a forecast. Please expand your date range.")
-    else:
-        X = daily_sales[['Days']]
-        y = daily_sales['TotalAmount']
-        
-        model = LinearRegression().fit(X, y)
-        train_preds = model.predict(X)
-        
-        st.markdown("### 🧮 Model Evaluation")
-        col_m1, col_m2 = st.columns(2)
-        col_m1.metric("R-Squared (Accuracy)", f"{r2_score(y, train_preds):.4f}")
-        col_m2.metric("Mean Absolute Error", f"${mean_absolute_error(y, train_preds):.2f}")
-        st.info("💡 **Academic Note:** An R² closer to 1.0 indicates a strong model fit. The MAE shows the average dollar variance in our predictions.")
-        
-        last_day = daily_sales['Days'].max()
-        future_days = np.array([[last_day + i] for i in range(1, 15)])
-        preds = model.predict(future_days)
-        future_dates = [daily_sales['OrderDate'].max() + datetime.timedelta(days=i) for i in range(1, 15)]
-        forecast_df = pd.DataFrame({'Date': future_dates, 'Forecast': preds})
-        
-        fig_forecast = px.line(forecast_df, x='Date', y='Forecast', title="AI Predicted Sales Trend", markers=True)
-        fig_forecast.update_traces(line_color='#10b981')
-        st.plotly_chart(fig_forecast, use_container_width=True)
-        
-        st.download_button("📥 Download Forecast Data (CSV)", data=forecast_df.to_csv(index=False), file_name="sales_forecast.csv", mime="text/csv")
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        st.subheader("Top Performing Products")
+        top_products = df.groupby('Description')['TotalSales'].sum().sort_values(ascending=True).tail(5).reset_index()
+        fig_bar = px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]])
+        fig_bar.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", yaxis_title="", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        fig_bar.update_traces(marker=dict(line=dict(color=bg_color, width=1.5)))
+        st.plotly_chart(fig_bar, use_container_width=True)
 
-# -- TAB 3: CUSTOMER SEGMENTATION (K-Means) --
+    with chart_col2:
+        st.subheader("Revenue by Region")
+        country_sales = df.groupby('Country')['TotalSales'].sum().reset_index()
+        fig_pie = px.pie(country_sales, values='TotalSales', names='Country', hole=0.4, color_discrete_sequence=chart_palette)
+        fig_pie.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        fig_pie.update_traces(marker=dict(line=dict(color=bg_color, width=2.5)))
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+# TAB 3: MACHINE LEARNING 
 with tab3:
-    st.header("🧠 Machine Learning Customer Clusters")
-    cust_df = df.groupby('CustomerID').agg({'TotalAmount':'sum', 'OrderDate':'count'}).rename(columns={'OrderDate':'Orders'})
+    st.subheader("Unsupervised Customer Segmentation")
+    snapshot_date = df['InvoiceDate'].max() + dt.timedelta(days=1)
+    rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: (snapshot_date - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
+    rfm_df.rename(columns={'InvoiceDate': 'Recency', 'InvoiceNo': 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     
-    if len(cust_df) < 3:
-        st.warning("Not enough customers to form 3 clusters.")
-    else:
-        features = cust_df[['TotalAmount', 'Orders']]
-        kmeans = KMeans(n_clusters=3, n_init=10, random_state=42).fit(features)
-        cust_df['Segment'] = kmeans.labels_.astype(str)
+    with st.spinner(f"Executing K-Means for {k_value} segments..."):
+        scaler = StandardScaler()
+        scaled_features = scaler.fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']])
+        kmeans = KMeans(n_clusters=k_value, random_state=42)
+        rfm_df['Cluster'] = kmeans.fit_predict(scaled_features)
         
-        st.markdown("### 🧮 Clustering Evaluation")
-        st.metric("Silhouette Score", f"{silhouette_score(features, kmeans.labels_):.4f}")
-        st.info("💡 **Academic Note:** The Silhouette Score (ranging from -1 to 1) measures cluster separation. A positive score confirms that our segments are distinct.")
-        
-        fig_cluster = px.scatter(cust_df, x='TotalAmount', y='Orders', color='Segment', title="Customer Groups (Value vs. Frequency)")
-        st.plotly_chart(fig_cluster, use_container_width=True)
-        
-        st.download_button("📥 Download Customer Segments (CSV)", data=cust_df.to_csv(), file_name="customer_segments.csv", mime="text/csv")
+    fig_3d = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
+    fig_3d.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, b=0, t=0), font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color), scene=dict(xaxis=dict(color=font_color, title_font=dict(color=font_color)), yaxis=dict(color=font_color, title_font=dict(color=font_color)), zaxis=dict(color=font_color, title_font=dict(color=font_color))))
+    fig_3d.update_traces(marker=dict(size=6, line=dict(width=1.5, color='#000000')))
+    st.plotly_chart(fig_3d, use_container_width=True)
+
+# TAB 4: WEB ANALYTICS 
+with tab4:
+    st.subheader("🌐 Simulated Google Analytics Dashboard")
+    col1, col2, col3, col4 = st.columns(4)
+    daily_visitors = df.groupby('Date')['WebsiteVisitors'].first()
+    tot_visitors = daily_visitors.sum()
+    
+    col1.metric("Active Users", f"{tot_visitors:,.0f}")
+    col2.metric("Page Views", f"{int(tot_visitors * 3.4):,.0f}")
+    col3.metric("Avg. Session Duration", "00:02:45")
+    col4.metric("Bounce Rate", "42.8%")
+    
+    st.divider()
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        st.subheader("Daily Traffic Trend")
+        traffic_trend = df.groupby('Date')['WebsiteVisitors'].first().reset_index()
+        fig_traffic = px.area(traffic_trend, x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]])
+        fig_traffic.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        st.plotly_chart(fig_traffic, use_container_width=True)
+
+    with chart_col2:
+        st.subheader("Traffic Acquisition")
+        acquisition_data = pd.DataFrame({'Channel': ['Organic Search', 'Direct', 'Social Media', 'Referral'], 'Users': [tot_visitors * 0.45, tot_visitors * 0.30, tot_visitors * 0.15, tot_visitors * 0.10]})
+        fig_acq = px.pie(acquisition_data, values='Users', names='Channel', hole=0.5, color_discrete_sequence=chart_palette)
+        fig_acq.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+        fig_acq.update_traces(marker=dict(line=dict(color=bg_color, width=2.5)))
+        st.plotly_chart(fig_acq, use_container_width=True)
+
+# TAB 5: PREDICTIVE ANALYTICS & AUTOMATION TRIGGERS
+with tab5:
+    st.subheader("🔮 Machine Learning Sales Forecast & Automation")
+    
+    daily_sales = df.groupby('Date')['TotalSales'].sum().reset_index()
+    daily_sales['Date'] = pd.to_datetime(daily_sales['Date'])
+    daily_sales['Ordinal'] = daily_sales['Date'].apply(lambda x: x.toordinal())
+    
+    z = np.polyfit(daily_sales['Ordinal'], daily_sales['TotalSales'], 2)
+    p = np.poly1d(z)
+    
+    last_date = daily_sales['Date'].max()
+    future_dates = [last_date + dt.timedelta(days=x) for x in range(1, 31)]
+    future_ordinals = [d.toordinal() for d in future_dates]
+    predictions = p(future_ordinals)
+    predictions = np.maximum(predictions, 0)
+    
+    if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85):
+        trigger_alert(f"Automated Warning: Forecasted revenue drop detected in the next 30 days for selected regions.", "FORECAST_WARNING")
+    
+    fig_predict = go.Figure()
+    fig_predict.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0], width=2)))
+    fig_predict.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='30-Day Forecast', line=dict(color=chart_palette[1], width=3, dash='dot')))
+    fig_predict.update_layout(template=chart_template, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=font_color), hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_color=font_color))
+    st.plotly_chart(fig_predict, use_container_width=True)
+
+# TAB 6: BACKEND SYSTEM ALERTS
+with tab6:
+    st.subheader("📩 Backend Automation & System Alerts")
+    st.write("Live logs of automated system triggers and warnings.")
+    
+    try:
+        conn = sqlite3.connect('enterprise_backend.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_alerts'")
+        if cursor.fetchone():
+            alerts_df = pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn)
+            if not alerts_df.empty:
+                st.dataframe(alerts_df, use_container_width=True, hide_index=True)
+            else:
+                st.success("✅ No critical alerts in the system log.")
+        else:
+            st.success("✅ System architecture initializing...")
+        conn.close()
+    except:
+        st.error("Could not fetch alerts table.")
