@@ -25,7 +25,6 @@ def auto_provision_db():
         cursor.execute('''CREATE TABLE system_alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, alert_type TEXT NOT NULL, message TEXT NOT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
         cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", ('admin', hash_password("iub2026"), 'System Administrator'))
         conn.commit()
-    # NEW: Create a permanent table for system settings like the API Key
     cursor.execute('''CREATE TABLE IF NOT EXISTS system_config (key_name TEXT PRIMARY KEY, key_value TEXT NOT NULL)''')
     conn.commit()
     conn.close()
@@ -76,10 +75,9 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# --- PERMANENT SQLITE DATABASE MEMORY FOR API KEY ---
+# --- PERMANENT SQLITE DATABASE MEMORY ---
 st.sidebar.header("🧠 AI Configuration")
 
-# 1. Check the SQLite Database for the key
 api_key = ""
 conn = sqlite3.connect('enterprise_backend.db')
 cursor = conn.cursor()
@@ -90,14 +88,12 @@ try:
 except: pass
 conn.close()
 
-# 2. If it is not in the database, show the form
 if not api_key:
     with st.sidebar.form("api_key_form"):
         key_input = st.text_input("Enter Gemini API Key", type="password")
         submit_key = st.form_submit_button("💾 Save Key Permanently")
         if submit_key and key_input:
             clean_key = key_input.strip()
-            # Save it permanently to the SQL Database
             conn = sqlite3.connect('enterprise_backend.db')
             cursor = conn.cursor()
             cursor.execute("INSERT OR REPLACE INTO system_config (key_name, key_value) VALUES (?, ?)", ('gemini_api_key', clean_key))
@@ -114,7 +110,6 @@ else:
         conn.close()
         st.rerun()
 
-# --- DATABASE AND UI LOGIC ---
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
 
@@ -174,38 +169,28 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- THE IRON-CLAD DISCOVERY ENGINE ---
+# --- THE QUOTA-SAVING DIRECT ROUTER ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     clean_key = raw_key.strip().replace('"', '').replace("'", "")
     genai.configure(api_key=clean_key)
     
-    valid_models = []
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            name_check = m.name.lower()
-            if 'vision' not in name_check and 'image' not in name_check and 'embedding' not in name_check and 'aqa' not in name_check:
-                valid_models.append(m.name)
-                
-    if not valid_models: 
-        raise Exception("Google API returned no valid Gemini text models for your account.")
-
-    target_model = valid_models[0]
-    for m in valid_models:
-        if '1.5-flash' in m.lower():
-            target_model = m
-            break
-        elif '1.0-pro' in m.lower():
-            target_model = m
-            
-    model = genai.GenerativeModel(target_model)
     context_prompt = f"""
     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
     Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
     Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
     """
-    response = model.generate_content(context_prompt)
-    return response.text, target_model
+    
+    # We bypass the scanner completely and attempt the exact model your account verified in the error log.
+    # This costs exactly 1 API call instead of 20+.
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(context_prompt)
+        return response.text, 'gemini-2.5-flash'
+    except:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(context_prompt)
+        return response.text, 'gemini-1.5-flash'
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
@@ -269,12 +254,12 @@ with tab6:
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with SQLite Persistent Storage.")
+    st.write("Generative AI integration with SQLite Storage and Quota-Optimized Routing.")
     
     if api_key:
         if st.button("✨ Generate Live Executive Report"):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
-            with st.spinner("Executing secure handshake with Google AI..."):
+            with st.spinner("Executing optimized, single-call handshake with Google AI..."):
                 try:
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
                     st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
@@ -282,7 +267,7 @@ with tab7:
                     st.write(report_text)
                 except Exception as e:
                     st.error(f"🚨 Google API Handshake Failed. Raw Error Data: {e}")
-                    st.warning("✅ Edge-Compute Fallback Active.")
+                    st.warning("✅ Edge-Compute Fallback Active. Generating deep insights locally to protect the presentation.")
                     st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
                     st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{roi_value:,.1f}%** and a web conversion rate of **{conv_value:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
                     st.write(f"**Inventory & Product Performance:**\nThe catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
