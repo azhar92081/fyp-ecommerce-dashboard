@@ -16,7 +16,6 @@ st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide"
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- CACHE RESTORED to prevent database locking ---
 @st.cache_resource
 def auto_provision_db_v2():
     conn = sqlite3.connect('enterprise_backend.db', timeout=15)
@@ -75,9 +74,7 @@ if st.sidebar.button("🚪 Secure Logout"):
 
 st.title("🛍️ Advanced E-commerce & Customer Intelligence")
 
-# --- THE ZERO-CRASH DIRECT OS FILE VAULT ---
 st.sidebar.header("🧠 AI Configuration")
-
 vault_file = "secure_vault.txt"
 api_key = ""
 
@@ -160,6 +157,47 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
+# --- LAZY-LOADED DEEP LEARNING (LSTM) FUNCTION ---
+@st.cache_data(show_spinner=False, ttl=3600)
+def get_lstm_predictions(dates, sales):
+    # We strictly import TF here so it doesn't crash the entire app on boot
+    import tensorflow as tf
+    from sklearn.preprocessing import MinMaxScaler
+    
+    temp_df = pd.DataFrame({'Date': dates, 'TotalSales': sales})
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(temp_df[['TotalSales']])
+
+    lookback = min(5, len(scaled_data) - 2)
+    X, y = [], []
+    for i in range(len(scaled_data) - lookback):
+        X.append(scaled_data[i:(i + lookback), 0])
+        y.append(scaled_data[i + lookback, 0])
+    X, y = np.array(X), np.array(y)
+    X = np.reshape(X, (X.shape[0], X.shape[1], 1))
+
+    tf.random.set_seed(42)
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.LSTM(20, input_shape=(lookback, 1)),
+        tf.keras.layers.Dense(1)
+    ])
+    model.compile(optimizer='adam', loss='mse')
+    model.fit(X, y, epochs=20, verbose=0)
+
+    future_predictions = []
+    current_batch = scaled_data[-lookback:].reshape((1, lookback, 1))
+
+    for i in range(30):
+        pred = model.predict(current_batch, verbose=0)[0]
+        future_predictions.append(pred)
+        current_batch = np.append(current_batch[:, 1:, :], [[pred]], axis=1)
+
+    unscaled_preds = scaler.inverse_transform(future_predictions).flatten()
+    last_date = pd.to_datetime(temp_df['Date']).max()
+    future_dates = [last_date + dt.timedelta(days=x) for x in range(1, 31)]
+
+    return future_dates, unscaled_preds
+
 @st.cache_data(show_spinner=False, ttl=3600)
 def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     clean_key = raw_key.strip().replace('"', '').replace("'", "")
@@ -170,12 +208,11 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
     Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
     """
-    
     model = genai.GenerativeModel('gemini-2.5-flash')
     response = model.generate_content(context_prompt)
     return response.text, 'gemini-2.5-flash'
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🔮 Forecast", "📩 Alerts", "🧠 AI Analyst"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🧠 LSTM Forecast", "📩 Alerts", "🧠 AI Analyst"])
 
 with tab1:
     st.subheader("Executive Operations Overview")
@@ -216,16 +253,26 @@ with tab4:
     st.plotly_chart(px.area(df.groupby('Date')['WebsiteVisitors'].first().reset_index(), x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]]), use_container_width=True)
 
 with tab5:
-    st.subheader("30-Day Predictive Sales Forecast")
+    st.subheader("🧠 Deep Learning (LSTM) 30-Day Sales Forecast")
     daily_sales = df.groupby('Date')['TotalSales'].sum().reset_index()
-    z = np.polyfit(pd.to_datetime(daily_sales['Date']).apply(lambda x: x.toordinal()), daily_sales['TotalSales'], 2)
-    future_dates = [daily_sales['Date'].max() + dt.timedelta(days=x) for x in range(1, 31)]
-    predictions = np.maximum(np.poly1d(z)([d.toordinal() for d in pd.to_datetime(future_dates)]), 0)
-    if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): trigger_alert("Automated Warning: Forecasted revenue drop detected.", "FORECAST_WARNING")
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
-    fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Forecast Trajectory', line=dict(color=chart_palette[1], dash='dot')))
-    st.plotly_chart(fig, use_container_width=True)
+    
+    if len(daily_sales) < 10:
+        st.warning("⚠️ Insufficient historical data to train Neural Network. Need at least 10 days of data.")
+    else:
+        with st.spinner("Initializing TensorFlow and Training LSTM Sequence Model..."):
+            try:
+                future_dates, predictions = get_lstm_predictions(daily_sales['Date'].tolist(), daily_sales['TotalSales'].tolist())
+                
+                if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): 
+                    trigger_alert("Automated Warning: Forecasted LSTM revenue drop detected.", "FORECAST_WARNING")
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
+                fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='LSTM Trajectory', line=dict(color=chart_palette[1], dash='dot')))
+                st.plotly_chart(fig, use_container_width=True)
+                st.success("✅ Deep Learning Inference Complete. Model cached for performance.")
+            except Exception as e:
+                st.error(f"Neural Network Training Failed. Please check logs. Error: {e}")
 
 with tab6:
     st.subheader("System Anomaly Alerts")
