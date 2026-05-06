@@ -232,11 +232,10 @@ with tab2:
     st.subheader("Top Performing Products")
     st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
-# --- THE FIX: SCHEMA ADAPTIVE MACHINE LEARNING ---
+# --- THE FIX: ADDING THE ENTERPRISE CLUSTER SUMMARY TABLE ---
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
     
-    # Safely check if 'InvoiceNo' exists. If not, use 'Description' count as a proxy for frequency.
     freq_col = 'InvoiceNo' if 'InvoiceNo' in df.columns else 'Description'
     freq_agg = 'nunique' if 'InvoiceNo' in df.columns else 'count'
     
@@ -248,7 +247,35 @@ with tab3:
     
     rfm_df.rename(columns={'InvoiceDate': 'Recency', freq_col: 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
+    
+    # Render the 3D Plotly Chart
     st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
+    
+    # Render the Business Logic Table underneath
+    st.markdown("### 📊 Cluster Intelligence Summary")
+    st.write("The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:")
+    
+    cluster_summary = rfm_df.groupby('Cluster').agg({
+        'CustomerID': 'count',
+        'Recency': 'mean',
+        'Frequency': 'mean',
+        'Monetary': 'mean'
+    }).reset_index()
+    
+    cluster_summary.rename(columns={
+        'Cluster': 'Cluster ID',
+        'CustomerID': 'Total Customers',
+        'Recency': 'Avg. Days Since Last Order',
+        'Frequency': 'Avg. Total Orders',
+        'Monetary': 'Avg. Total Spend ($)'
+    }, inplace=True)
+    
+    # Clean up the numbers for display
+    cluster_summary['Avg. Days Since Last Order'] = cluster_summary['Avg. Days Since Last Order'].round(0).astype(int)
+    cluster_summary['Avg. Total Orders'] = cluster_summary['Avg. Total Orders'].round(1)
+    cluster_summary['Avg. Total Spend ($)'] = cluster_summary['Avg. Total Spend ($)'].round(2)
+    
+    st.dataframe(cluster_summary, use_container_width=True, hide_index=True)
 
 with tab4:
     st.subheader("Simulated Google Analytics Traffic")
