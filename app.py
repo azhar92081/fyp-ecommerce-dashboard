@@ -194,7 +194,6 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     clean_key = raw_key.strip().replace('"', '').replace("'", "")
     genai.configure(api_key=clean_key)
     
-    # --- UPDATED MARKDOWN PROMPT ENGINEERING ---
     context_prompt = f"""
     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
     Your task is to write a highly professional executive summary detailing our performance and offering strategic recommendations.
@@ -220,6 +219,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns"
 
 with tab1:
     st.subheader("Executive Operations Overview")
+    
     total_revenue = df['TotalSales'].sum()
     total_buyers = df['CustomerID'].nunique()
     total_ad_spend = df.groupby('Date').first()['AdSpend'].sum()
@@ -227,23 +227,53 @@ with tab1:
     roi_value = ((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0
     conv_value = (total_buyers / total_visitors) * 100 if total_visitors > 0 else 0
     
+    max_date = pd.to_datetime(df['Date']).max().date()
+    current_30d = df[df['Date'] >= (max_date - dt.timedelta(days=30))]
+    prev_30d = df[(df['Date'] >= (max_date - dt.timedelta(days=60))) & (df['Date'] < (max_date - dt.timedelta(days=30)))]
+    
+    curr_rev = current_30d['TotalSales'].sum()
+    prev_rev = prev_30d['TotalSales'].sum()
+    rev_delta = ((curr_rev - prev_rev) / prev_rev) * 100 if prev_rev > 0 else 0
+    
+    curr_spend = current_30d.groupby('Date').first()['AdSpend'].sum() if not current_30d.empty else 0
+    prev_spend = prev_30d.groupby('Date').first()['AdSpend'].sum() if not prev_30d.empty else 0
+    spend_delta = ((curr_spend - prev_spend) / prev_spend) * 100 if prev_spend > 0 else 0
+    
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Gross Revenue", f"${total_revenue:,.0f}", "12.5% vs Last Month")
-    col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}", "-2.4% Optimization")
-    col3.metric("ROI", f"{roi_value:,.1f}%", "8.1% Lift")
-    col4.metric("Conversion", f"{conv_value:,.2f}%", "0.5% Lift")
+    col1.metric("Gross Revenue", f"${total_revenue:,.0f}", f"{rev_delta:.1f}% (30d Trend)")
+    col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}", f"{spend_delta:.1f}% (30d Trend)", delta_color="inverse")
+    col3.metric("ROI", f"{roi_value:,.1f}%", "Active Filter")
+    col4.metric("Conversion", f"{conv_value:,.2f}%", "Active Filter")
     
     st.markdown("---")
     st.subheader("Gross Revenue Trajectory")
+    
     daily_revenue_chart = df.groupby('Date')['TotalSales'].sum().reset_index()
-    fig_rev = px.area(daily_revenue_chart, x='Date', y='TotalSales', color_discrete_sequence=[chart_palette[0]])
-    fig_rev.update_layout(margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
+    
+    fig_rev = go.Figure()
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3))
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
+    
+    fig_rev.update_layout(margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
     st.plotly_chart(fig_rev, use_container_width=True)
 
 with tab2:
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
     st.subheader("Top Performing Products")
-    st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
+    
+    fig_bar = px.bar(
+        top_products, 
+        x='TotalSales', 
+        y='Description', 
+        orientation='h', 
+        text='TotalSales', 
+        color_discrete_sequence=[chart_palette[0]]
+    )
+    fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
+    fig_bar.update_layout(uniformtext_minsize=10, uniformtext_mode='hide')
+    
+    st.plotly_chart(fig_bar, use_container_width=True)
 
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
