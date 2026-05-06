@@ -224,8 +224,6 @@ with tab1:
     total_buyers = df['CustomerID'].nunique()
     total_ad_spend = df.groupby('Date').first()['AdSpend'].sum()
     total_visitors = df.groupby('Date').first()['WebsiteVisitors'].sum()
-    roi_value = ((total_revenue - total_ad_spend) / total_ad_spend) * 100 if total_ad_spend > 0 else 0
-    conv_value = (total_buyers / total_visitors) * 100 if total_visitors > 0 else 0
     
     max_date = pd.to_datetime(df['Date']).max().date()
     current_30d = df[df['Date'] >= (max_date - dt.timedelta(days=30))]
@@ -254,8 +252,8 @@ with tab1:
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Gross Revenue", f"${total_revenue:,.0f}", f"{rev_delta:.1f}% (30d Trend)")
     col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}", f"{spend_delta:.1f}% (30d Trend)")
-    col3.metric("ROI", f"{roi_value:,.1f}%", f"{roi_delta:+.1f}% (30d Trend)")
-    col4.metric("Conversion", f"{conv_value:,.2f}%", f"{conv_delta:+.2f}% (30d Trend)")
+    col3.metric("ROI", f"{curr_roi:,.1f}%", f"{roi_delta:+.1f}% (30d Trend)")
+    col4.metric("Conversion", f"{curr_conv:,.2f}%", f"{conv_delta:+.2f}% (30d Trend)")
     
     st.markdown("---")
     st.subheader("Gross Revenue Trajectory")
@@ -335,8 +333,35 @@ with tab3:
     st.dataframe(cluster_summary, use_container_width=True, hide_index=True)
 
 with tab4:
-    st.subheader("Simulated Google Analytics Traffic")
-    st.plotly_chart(px.area(df.groupby('Date')['WebsiteVisitors'].first().reset_index(), x='Date', y='WebsiteVisitors', color_discrete_sequence=[chart_palette[1]]), use_container_width=True)
+    st.subheader("🌐 Web Traffic Analytics")
+    
+    web_df = df.groupby('Date')['WebsiteVisitors'].first().reset_index()
+    total_visits = web_df['WebsiteVisitors'].sum()
+    avg_visits = web_df['WebsiteVisitors'].mean()
+    peak_visits = web_df['WebsiteVisitors'].max()
+    peak_date = web_df.loc[web_df['WebsiteVisitors'].idxmax(), 'Date']
+    
+    w_col1, w_col2, w_col3 = st.columns(3)
+    w_col1.metric("Total Website Visitors", f"{total_visits:,.0f}")
+    w_col2.metric("Avg. Daily Visitors", f"{avg_visits:,.0f}")
+    w_col3.metric("Peak Traffic Day", f"{peak_visits:,.0f}", f"Occurred on {peak_date}", delta_color="off")
+    
+    st.markdown("---")
+    st.subheader("Traffic Acquisition Trends")
+    
+    web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
+    
+    fig_web = go.Figure()
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3))
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
+    
+    fig_web.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+    )
+    st.plotly_chart(fig_web, use_container_width=True)
 
 with tab5:
     st.subheader("🧠 Deep Learning (Neural Network) 30-Day Sales Forecast")
@@ -377,7 +402,8 @@ with tab7:
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             with st.spinner("Executing direct handshake with Google AI..."):
                 try:
-                    report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, roi_value, conv_value, api_key)
+                    # Note: We pass the dynamically calculated curr_roi and curr_conv here for maximum accuracy
+                    report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, curr_roi, curr_conv, api_key)
                     st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
                     st.write(report_text)
@@ -389,7 +415,7 @@ with tab7:
                         st.warning("⚡ **System Telemetry:** Remote Compute Node Offline. Seamlessly routing to Local Edge-Compute Node for zero downtime.")
                         
                     st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
-                    st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{roi_value:,.1f}%** and a web conversion rate of **{conv_value:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
+                    st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{curr_roi:,.1f}%** and a web conversion rate of **{curr_conv:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
                     st.write(f"**Inventory & Product Performance:**\nThe catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
                     st.write("**Strategic Machine Learning Recommendation:**\nBased on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
     else:
