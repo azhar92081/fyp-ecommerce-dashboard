@@ -159,7 +159,6 @@ def trigger_alert(message, alert_type="WARNING"):
     cursor.execute("INSERT INTO system_alerts (alert_type, message) VALUES (?, ?)", (alert_type, message))
     conn.commit(); conn.close()
 
-# --- LIGHTWEIGHT NEURAL NETWORK FORECASTING ---
 @st.cache_data(show_spinner=False, ttl=3600)
 def get_nn_predictions(dates, sales):
     temp_df = pd.DataFrame({'Date': dates, 'TotalSales': sales})
@@ -173,7 +172,6 @@ def get_nn_predictions(dates, sales):
         y.append(scaled_data[i + lookback, 0])
     X, y = np.array(X), np.array(y)
 
-    # Multi-Layer Perceptron (Deep Learning mapping)
     model = MLPRegressor(hidden_layer_sizes=(20, 10), max_iter=1000, random_state=42)
     model.fit(X, y)
 
@@ -234,10 +232,21 @@ with tab2:
     st.subheader("Top Performing Products")
     st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
+# --- THE FIX: SCHEMA ADAPTIVE MACHINE LEARNING ---
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
-    rfm_df = df.groupby('CustomerID').agg({'InvoiceDate': lambda x: ((df['InvoiceDate'].max() + dt.timedelta(days=1)) - x.max()).days, 'InvoiceNo': 'nunique', 'TotalSales': 'sum'}).reset_index()
-    rfm_df.rename(columns={'InvoiceDate': 'Recency', 'InvoiceNo': 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
+    
+    # Safely check if 'InvoiceNo' exists. If not, use 'Description' count as a proxy for frequency.
+    freq_col = 'InvoiceNo' if 'InvoiceNo' in df.columns else 'Description'
+    freq_agg = 'nunique' if 'InvoiceNo' in df.columns else 'count'
+    
+    rfm_df = df.groupby('CustomerID').agg({
+        'InvoiceDate': lambda x: ((df['InvoiceDate'].max() + dt.timedelta(days=1)) - x.max()).days, 
+        freq_col: freq_agg, 
+        'TotalSales': 'sum'
+    }).reset_index()
+    
+    rfm_df.rename(columns={'InvoiceDate': 'Recency', freq_col: 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
 
