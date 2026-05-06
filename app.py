@@ -215,7 +215,7 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     response = model.generate_content(context_prompt)
     return response.text, 'gemini-2.5-flash'
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🧠 Neural Net Forecast", "📩 Alerts", "🧠 AI Analyst"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🧠 Neural Net Forecast", "🚨 Alerts", "🧠 AI Analyst"])
 
 with tab1:
     st.subheader("Executive Operations Overview")
@@ -405,12 +405,26 @@ with tab5:
                 st.error(f"Neural Network Training Failed. Please check logs. Error: {e}")
 
 with tab6:
-    st.subheader("System Anomaly Alerts")
+    st.subheader("🚨 System Anomaly Alerts")
     try:
         conn = sqlite3.connect('enterprise_backend.db', timeout=15)
         if conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_alerts'").fetchone(): 
-            st.dataframe(pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn), use_container_width=True, hide_index=True)
-    except: pass
+            alerts_df = pd.read_sql("SELECT * FROM system_alerts ORDER BY timestamp DESC LIMIT 10", conn)
+            
+            if alerts_df.empty:
+                st.success("✅ System Nominal: No anomalies, revenue drops, or security threats detected in the current data window.")
+            else:
+                alerts_df.rename(columns={
+                    'id': 'Alert ID',
+                    'alert_type': 'Severity',
+                    'message': 'Anomaly Description',
+                    'timestamp': 'Time Detected'
+                }, inplace=True)
+                
+                st.dataframe(alerts_df, use_container_width=True, hide_index=True)
+        conn.close()
+    except Exception as e: 
+        st.error(f"Database connection error: {e}")
 
 with tab7:
     st.subheader("🧠 Gemini Executive AI Analyst")
