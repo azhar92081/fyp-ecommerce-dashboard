@@ -13,6 +13,7 @@ import hashlib
 import os
 import google.generativeai as genai
 
+# Page Config must be the first command
 st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 def hash_password(password):
@@ -35,26 +36,103 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
+# --- ADVANCED ENTERPRISE CSS INJECTION ---
 if night_mode:
-    theme_css = "<style>.stApp { background-color: #0E1117; color: #FFFFFF; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
-    chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"] 
+    bg_color = "#0B0F19" 
+    card_bg = "#111827"
+    border_color = "#1F2937"
+    text_color = "#F9FAFB"
+    accent_color = "#00E5FF"
+    chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"]
 else:
-    theme_css = "<style>.stApp { background-color: #F4F6F9; color: #000000; } #MainMenu {visibility: hidden;} footer {visibility: hidden;}</style>"
-    chart_palette = ["#0056D2", "#D32F2F", "#FBC02D", "#6A1B9A", "#2E7D32", "#E65100"] 
+    bg_color = "#F4F6F9"
+    card_bg = "#FFFFFF"
+    border_color = "#E5E7EB"
+    text_color = "#111827"
+    accent_color = "#2563EB"
+    chart_palette = ["#2563EB", "#DC2626", "#D97706", "#7C3AED", "#059669", "#EA580C"] 
     
+theme_css = f"""
+<style>
+    /* Global App Styling */
+    .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+    #MainMenu {{visibility: hidden;}}
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    
+    /* Premium Floating Cards for Metrics */
+    div[data-testid="metric-container"] {{
+        background-color: {card_bg};
+        border: 1px solid {border_color};
+        padding: 20px 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }}
+    div[data-testid="metric-container"]:hover {{
+        transform: translateY(-5px);
+        border-color: {accent_color};
+        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+    }}
+    
+    /* Sleek Segmented Tabs */
+    .stTabs [data-baseweb="tab-list"] {{ 
+        gap: 8px; 
+        padding-bottom: 5px;
+    }}
+    .stTabs [data-baseweb="tab"] {{ 
+        background-color: transparent; 
+        border-radius: 8px; 
+        padding: 10px 20px; 
+        font-weight: 600; 
+        transition: background-color 0.2s ease;
+    }}
+    .stTabs [data-baseweb="tab"]:hover {{
+        background-color: {border_color};
+    }}
+    .stTabs [aria-selected="true"] {{ 
+        background-color: {card_bg} !important; 
+        border: 1px solid {border_color};
+        border-bottom: 3px solid {accent_color} !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }}
+    
+    /* Elegant Buttons */
+    .stButton>button {{
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: 1px solid {border_color};
+    }}
+    .stButton>button:hover {{
+        border-color: {accent_color};
+        color: {accent_color};
+        box-shadow: 0 4px 12px rgba(0, 229, 255, 0.15);
+    }}
+    
+    /* Dataframe & Table Borders */
+    [data-testid="stDataFrame"] {{
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid {border_color};
+    }}
+</style>
+"""
 st.markdown(theme_css, unsafe_allow_html=True)
+# --- END CSS INJECTION ---
 
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
 if not st.session_state['logged_in']:
-    st.markdown(f"<h1 style='text-align: center; color: {chart_palette[0]};'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: {accent_color}; margin-top: 100px;'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; margin-bottom: 30px;'>Authenticate to access intelligence dashboard</p>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         with st.form("login_form"):
             user = st.text_input("Username")
             pwd = st.text_input("Password", type="password")
-            submit = st.form_submit_button("Authenticate via SQL")
+            submit = st.form_submit_button("Authenticate via SQL", use_container_width=True)
             if submit:
                 conn = sqlite3.connect('enterprise_backend.db', timeout=15)
                 cursor = conn.cursor()
@@ -70,11 +148,11 @@ if not st.session_state['logged_in']:
     st.stop()
 
 st.sidebar.success(f"✅ Authenticated as: {st.session_state['role']}")
-if st.sidebar.button("🚪 Secure Logout"):
+if st.sidebar.button("🚪 Secure Logout", use_container_width=True):
     st.session_state['logged_in'] = False
     st.rerun()
 
-st.title("🛍️ Advanced E-commerce & Customer Intelligence")
+st.markdown(f"<h1 style='color: {accent_color}; padding-bottom: 20px;'>🛍️ Advanced E-commerce & Customer Intelligence</h1>", unsafe_allow_html=True)
 
 st.sidebar.header("🧠 AI Configuration")
 vault_file = "secure_vault.txt"
@@ -87,7 +165,7 @@ if os.path.exists(vault_file):
 if not api_key:
     with st.sidebar.form("api_key_form"):
         key_input = st.text_input("Enter Gemini API Key", type="password")
-        submit_key = st.form_submit_button("💾 Save Key to OS Vault")
+        submit_key = st.form_submit_button("💾 Save Key to OS Vault", use_container_width=True)
         if submit_key and key_input:
             clean_key = key_input.strip()
             with open(vault_file, "w") as f:
@@ -95,11 +173,12 @@ if not api_key:
             st.rerun()
 else:
     st.sidebar.success("✅ Key Permanently Locked in Secure File")
-    if st.sidebar.button("🗑️ Delete Key"):
+    if st.sidebar.button("🗑️ Delete Key", use_container_width=True):
         if os.path.exists(vault_file):
             os.remove(vault_file)
         st.rerun()
 
+st.sidebar.markdown("---")
 st.sidebar.header("1. Database Management")
 uploaded_file = st.sidebar.file_uploader("Upload CSV to Update SQL Database", type=['csv'])
 
@@ -139,6 +218,7 @@ if raw_df.empty:
     st.info("👈 System Architecture Online. Please upload a CSV file to initialize the SQL database.")
     st.stop()
 
+st.sidebar.markdown("---")
 st.sidebar.header("2. Interactive Filters")
 all_countries = sorted(raw_df['Country'].unique())
 selected_countries = st.sidebar.multiselect("🌍 Filter by Region", all_countries, default=all_countries[:5])
@@ -150,6 +230,7 @@ if len(date_range) == 2 and len(selected_countries) > 0:
     df = raw_df[(raw_df['Date'] >= start_date) & (raw_df['Date'] <= end_date) & (raw_df['Country'].isin(selected_countries))]
 else: st.stop()
 
+st.sidebar.markdown("---")
 st.sidebar.header("3. Machine Learning Settings")
 k_value = st.sidebar.slider("Select Customer Clusters (K)", min_value=2, max_value=6, value=4)
 
@@ -215,7 +296,7 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     response = model.generate_content(context_prompt)
     return response.text, 'gemini-2.5-flash'
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 KPIs", "🔍 Patterns", "🤖 ML Segments", "🌐 Web", "🧠 Neural Net Forecast", "🚨 Alerts", "🧠 AI Analyst"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 Financial KPIs", "🔍 Product Patterns", "🤖 ML Segments", "🌐 Web Traffic", "🧠 Neural Net Forecast", "🚨 System Alerts", "🧠 AI Analyst"])
 
 with tab1:
     st.subheader("Executive Operations Overview")
@@ -255,7 +336,7 @@ with tab1:
     col3.metric("ROI", f"{curr_roi:,.1f}%", f"{roi_delta:+.1f}% (30d Trend)")
     col4.metric("Conversion", f"{curr_conv:,.2f}%", f"{conv_delta:+.2f}% (30d Trend)")
     
-    st.markdown("---")
+    st.markdown("<br><hr><br>", unsafe_allow_html=True)
     st.subheader("Gross Revenue Trajectory")
     
     daily_revenue_chart = df.groupby('Date')['TotalSales'].sum().reset_index()
@@ -287,7 +368,7 @@ with tab2:
         color_discrete_sequence=[chart_palette[0]]
     )
     fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
-    fig_bar.update_layout(uniformtext_minsize=10, uniformtext_mode='hide')
+    fig_bar.update_layout(uniformtext_minsize=10, uniformtext_mode='hide', paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     
     st.plotly_chart(fig_bar, use_container_width=True)
 
@@ -306,7 +387,7 @@ with tab3:
     rfm_df.rename(columns={'InvoiceDate': 'Recency', freq_col: 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     
-    st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
+    st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette).update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"), use_container_width=True)
     
     st.markdown("### 📊 Cluster Intelligence Summary")
     st.write("The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:")
@@ -346,7 +427,7 @@ with tab4:
     w_col2.metric("Avg. Daily Visitors", f"{avg_visits:,.0f}")
     w_col3.metric("Peak Traffic Day", f"{peak_visits:,.0f}", f"Occurred on {peak_date}", delta_color="off")
     
-    st.markdown("---")
+    st.markdown("<br><hr><br>", unsafe_allow_html=True)
     st.subheader("Traffic Acquisition Trends")
     
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
@@ -382,7 +463,7 @@ with tab5:
                 p_col2.metric("Avg. Daily Projected Sales", f"${avg_projected:,.0f}")
                 p_col3.metric("Model Architecture", "Scikit-Learn MLP", delta_color="off")
                 
-                st.markdown("---")
+                st.markdown("<br><hr><br>", unsafe_allow_html=True)
                 
                 if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): 
                     trigger_alert("Automated Warning: Forecasted revenue drop detected by Neural Net.", "FORECAST_WARNING")
@@ -431,14 +512,21 @@ with tab7:
     st.write("Generative AI integration with Direct OS Storage and Quota-Optimized Routing.")
     
     if api_key:
-        if st.button("✨ Generate Live Executive Report"):
+        if st.button("✨ Generate Live Executive Report", use_container_width=True):
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             with st.spinner("Executing direct handshake with Google AI..."):
                 try:
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, curr_roi, curr_conv, api_key)
                     st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
-                    st.markdown("### 📊 Automated Executive Intelligence Brief")
-                    st.write(report_text)
+                    
+                    # Wrap the AI report in an elegant styling box
+                    st.markdown(f"""
+                    <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
+                        <h3 style='color: {accent_color}; margin-top: 0;'>📊 Automated Executive Intelligence Brief</h3>
+                        {report_text}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                 except Exception as e:
                     error_msg = str(e).lower()
                     if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
@@ -446,9 +534,13 @@ with tab7:
                     else:
                         st.warning("⚡ **System Telemetry:** Remote Compute Node Offline. Seamlessly routing to Local Edge-Compute Node for zero downtime.")
                         
-                    st.markdown("### 📊 Enterprise Intelligence Brief (Local Fallback)")
-                    st.write(f"**Executive Financial Summary:**\nOver the selected operational period, the enterprise dashboard recorded a total Gross Revenue of **\${total_revenue:,.2f}** generated from a highly engaged cohort of **{total_buyers}** unique buyers. Direct marketing expenditures totaled **\${total_ad_spend:,.2f}**. This yields a highly optimized Return on Ad Spend (ROI) of **{curr_roi:,.1f}%** and a web conversion rate of **{curr_conv:,.2f}%**, indicating a highly efficient customer acquisition strategy.")
-                    st.write(f"**Inventory & Product Performance:**\nThe catalog's performance was overwhelmingly anchored by the **{top_item}**, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.")
-                    st.write("**Strategic Machine Learning Recommendation:**\nBased on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.")
+                    st.markdown(f"""
+                    <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
+                        <h3 style='color: {accent_color}; margin-top: 0;'>📊 Enterprise Intelligence Brief (Local Fallback)</h3>
+                        <p><b>Executive Financial Summary:</b><br>Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of <b>${total_revenue:,.2f}</b> generated from a highly engaged cohort of <b>{total_buyers}</b> unique buyers. Direct marketing expenditures totaled <b>${total_ad_spend:,.2f}</b>. This yields a highly optimized Return on Ad Spend (ROI) of <b>{curr_roi:,.1f}%</b> and a web conversion rate of <b>{curr_conv:,.2f}%</b>, indicating a highly efficient customer acquisition strategy.</p>
+                        <p><b>Inventory & Product Performance:</b><br>The catalog's performance was overwhelmingly anchored by the <b>{top_item}</b>, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.</p>
+                        <p><b>Strategic Machine Learning Recommendation:</b><br>Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.</p>
+                    </div>
+                    """, unsafe_allow_html=True)
     else:
         st.warning("⚠️ Paste your API Key in the left sidebar and click 'Save Key to OS Vault' to activate.")
