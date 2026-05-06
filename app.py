@@ -239,11 +239,23 @@ with tab1:
     prev_spend = prev_30d.groupby('Date').first()['AdSpend'].sum() if not prev_30d.empty else 0
     spend_delta = ((curr_spend - prev_spend) / prev_spend) * 100 if prev_spend > 0 else 0
     
+    curr_roi = ((curr_rev - curr_spend) / curr_spend) * 100 if curr_spend > 0 else 0
+    prev_roi = ((prev_rev - prev_spend) / prev_spend) * 100 if prev_spend > 0 else 0
+    roi_delta = curr_roi - prev_roi
+    
+    curr_buyers = current_30d['CustomerID'].nunique()
+    prev_buyers = prev_30d['CustomerID'].nunique()
+    curr_visitors = current_30d.groupby('Date').first()['WebsiteVisitors'].sum() if not current_30d.empty else 0
+    prev_visitors = prev_30d.groupby('Date').first()['WebsiteVisitors'].sum() if not prev_30d.empty else 0
+    curr_conv = (curr_buyers / curr_visitors) * 100 if curr_visitors > 0 else 0
+    prev_conv = (prev_buyers / prev_visitors) * 100 if prev_visitors > 0 else 0
+    conv_delta = curr_conv - prev_conv
+    
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Gross Revenue", f"${total_revenue:,.0f}", f"{rev_delta:.1f}% (30d Trend)")
-    col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}", f"{spend_delta:.1f}% (30d Trend)", delta_color="inverse")
-    col3.metric("ROI", f"{roi_value:,.1f}%", "Active Filter")
-    col4.metric("Conversion", f"{conv_value:,.2f}%", "Active Filter")
+    col2.metric("Marketing Spend", f"${total_ad_spend:,.0f}", f"{spend_delta:.1f}% (30d Trend)")
+    col3.metric("ROI", f"{roi_value:,.1f}%", f"{roi_delta:+.1f}% (30d Trend)")
+    col4.metric("Conversion", f"{conv_value:,.2f}%", f"{conv_delta:+.2f}% (30d Trend)")
     
     st.markdown("---")
     st.subheader("Gross Revenue Trajectory")
@@ -255,7 +267,13 @@ with tab1:
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
-    fig_rev.update_layout(margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+    fig_rev.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0), 
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="rgba(0,0,0,0)", 
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        yaxis=dict(tickprefix="$")
+    )
     st.plotly_chart(fig_rev, use_container_width=True)
 
 with tab2:
