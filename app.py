@@ -36,19 +36,19 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- ADVANCED ENTERPRISE CSS INJECTION ---
+# --- 🎨 ADVANCED RESPONSIVE DAY/NIGHT CSS INJECTION ---
 if night_mode:
-    bg_color = "#0B0F19" 
-    card_bg = "#111827"
-    border_color = "#1F2937"
-    text_color = "#F9FAFB"
+    bg_color = "#0E1117" 
+    card_bg = "#161B22"
+    border_color = "#30363D"
+    text_color = "#E5E7EB"
     accent_color = "#00E5FF"
     chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"]
 else:
-    bg_color = "#F4F6F9"
+    bg_color = "#F8FAFC"
     card_bg = "#FFFFFF"
-    border_color = "#E5E7EB"
-    text_color = "#111827"
+    border_color = "#E2E8F0"
+    text_color = "#0F172A"
     accent_color = "#2563EB"
     chart_palette = ["#2563EB", "#DC2626", "#D97706", "#7C3AED", "#059669", "#EA580C"] 
     
@@ -56,6 +56,7 @@ theme_css = f"""
 <style>
     /* Global App Styling */
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+    h1, h2, h3, h4, h5, h6, p, span, div {{ color: {text_color} !important; }}
     #MainMenu {{visibility: hidden;}}
     header {{visibility: hidden;}}
     footer {{visibility: hidden;}}
@@ -64,21 +65,23 @@ theme_css = f"""
     div[data-testid="metric-container"] {{
         background-color: {card_bg};
         border: 1px solid {border_color};
-        padding: 20px 24px;
-        border-radius: 12px;
+        padding: 24px;
+        border-radius: 16px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        transition: transform 0.2s ease, border-color 0.2s ease;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }}
     div[data-testid="metric-container"]:hover {{
         transform: translateY(-5px);
         border-color: {accent_color};
-        box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        box-shadow: 0 12px 20px rgba(0,0,0,0.1);
     }}
+    div[data-testid="stMetricValue"] {{ color: {text_color} !important; font-weight: 700; }}
     
     /* Sleek Segmented Tabs */
     .stTabs [data-baseweb="tab-list"] {{ 
         gap: 8px; 
         padding-bottom: 5px;
+        overflow-x: auto; /* Enables smooth scrolling on mobile */
     }}
     .stTabs [data-baseweb="tab"] {{ 
         background-color: transparent; 
@@ -86,13 +89,12 @@ theme_css = f"""
         padding: 10px 20px; 
         font-weight: 600; 
         transition: background-color 0.2s ease;
+        white-space: nowrap;
     }}
-    .stTabs [data-baseweb="tab"]:hover {{
-        background-color: {border_color};
-    }}
+    .stTabs [data-baseweb="tab"]:hover {{ background-color: {border_color}; }}
     .stTabs [aria-selected="true"] {{ 
         background-color: {card_bg} !important; 
-        border: 1px solid {border_color};
+        border: 1px solid {border_color} !important;
         border-bottom: 3px solid {accent_color} !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }}
@@ -103,10 +105,12 @@ theme_css = f"""
         font-weight: 600;
         transition: all 0.3s ease;
         border: 1px solid {border_color};
+        background-color: {card_bg};
+        color: {text_color};
     }}
     .stButton>button:hover {{
         border-color: {accent_color};
-        color: {accent_color};
+        color: {accent_color} !important;
         box-shadow: 0 4px 12px rgba(0, 229, 255, 0.15);
     }}
     
@@ -115,6 +119,14 @@ theme_css = f"""
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid {border_color};
+    }}
+    
+    /* Perfect Mobile Responsiveness (Media Queries) */
+    @media (max-width: 768px) {{
+        div[data-testid="metric-container"] {{ padding: 16px; }}
+        h1 {{ font-size: 1.8rem !important; }}
+        h3 {{ font-size: 1.2rem !important; }}
+        .stTabs [data-baseweb="tab"] {{ padding: 8px 12px; font-size: 0.9rem; }}
     }}
 </style>
 """
@@ -125,9 +137,9 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
 if not st.session_state['logged_in']:
-    st.markdown(f"<h1 style='text-align: center; color: {accent_color}; margin-top: 100px;'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; margin-bottom: 30px;'>Authenticate to access intelligence dashboard</p>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1, 1])
+    st.markdown(f"<h1 style='text-align: center; color: {accent_color} !important; margin-top: 10vh;'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; margin-bottom: 30px; font-size: 1.1rem;'>Authenticate to access intelligence dashboard</p>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         with st.form("login_form"):
             user = st.text_input("Username")
@@ -152,7 +164,7 @@ if st.sidebar.button("🚪 Secure Logout", use_container_width=True):
     st.session_state['logged_in'] = False
     st.rerun()
 
-st.markdown(f"<h1 style='color: {accent_color}; padding-bottom: 20px;'>🛍️ Advanced E-commerce & Customer Intelligence</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='color: {accent_color} !important; padding-bottom: 20px; font-weight: 800;'>🛍️ Advanced E-commerce & Customer Intelligence</h1>", unsafe_allow_html=True)
 
 st.sidebar.header("🧠 AI Configuration")
 vault_file = "secure_vault.txt"
@@ -336,7 +348,7 @@ with tab1:
     col3.metric("ROI", f"{curr_roi:,.1f}%", f"{roi_delta:+.1f}% (30d Trend)")
     col4.metric("Conversion", f"{curr_conv:,.2f}%", f"{conv_delta:+.2f}% (30d Trend)")
     
-    st.markdown("<br><hr><br>", unsafe_allow_html=True)
+    st.markdown("<br><br>", unsafe_allow_html=True)
     st.subheader("Gross Revenue Trajectory")
     
     daily_revenue_chart = df.groupby('Date')['TotalSales'].sum().reset_index()
@@ -346,8 +358,10 @@ with tab1:
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
+    # DYNAMIC FONT COLORING FOR PLOTLY based on Theme
     fig_rev.update_layout(
-        margin=dict(l=0, r=0, t=0, b=0), 
+        font=dict(color=text_color),
+        margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
@@ -368,7 +382,13 @@ with tab2:
         color_discrete_sequence=[chart_palette[0]]
     )
     fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
-    fig_bar.update_layout(uniformtext_minsize=10, uniformtext_mode='hide', paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig_bar.update_layout(
+        font=dict(color=text_color),
+        uniformtext_minsize=10, 
+        uniformtext_mode='hide', 
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
     
     st.plotly_chart(fig_bar, use_container_width=True)
 
@@ -387,7 +407,13 @@ with tab3:
     rfm_df.rename(columns={'InvoiceDate': 'Recency', freq_col: 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     
-    st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette).update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"), use_container_width=True)
+    fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
+    fig_scatter.update_layout(
+        font=dict(color=text_color),
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_scatter, use_container_width=True)
     
     st.markdown("### 📊 Cluster Intelligence Summary")
     st.write("The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:")
@@ -427,7 +453,7 @@ with tab4:
     w_col2.metric("Avg. Daily Visitors", f"{avg_visits:,.0f}")
     w_col3.metric("Peak Traffic Day", f"{peak_visits:,.0f}", f"Occurred on {peak_date}", delta_color="off")
     
-    st.markdown("<br><hr><br>", unsafe_allow_html=True)
+    st.markdown("<br><br>", unsafe_allow_html=True)
     st.subheader("Traffic Acquisition Trends")
     
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
@@ -437,7 +463,8 @@ with tab4:
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
     
     fig_web.update_layout(
-        margin=dict(l=0, r=0, t=0, b=0),
+        font=dict(color=text_color),
+        margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
@@ -463,7 +490,7 @@ with tab5:
                 p_col2.metric("Avg. Daily Projected Sales", f"${avg_projected:,.0f}")
                 p_col3.metric("Model Architecture", "Scikit-Learn MLP", delta_color="off")
                 
-                st.markdown("<br><hr><br>", unsafe_allow_html=True)
+                st.markdown("<br><br>", unsafe_allow_html=True)
                 
                 if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): 
                     trigger_alert("Automated Warning: Forecasted revenue drop detected by Neural Net.", "FORECAST_WARNING")
@@ -473,7 +500,8 @@ with tab5:
                 fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
                 
                 fig.update_layout(
-                    margin=dict(l=0, r=0, t=0, b=0),
+                    font=dict(color=text_color),
+                    margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
                     legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0)"),
@@ -519,10 +547,9 @@ with tab7:
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, curr_roi, curr_conv, api_key)
                     st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
                     
-                    # Wrap the AI report in an elegant styling box
                     st.markdown(f"""
                     <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
-                        <h3 style='color: {accent_color}; margin-top: 0;'>📊 Automated Executive Intelligence Brief</h3>
+                        <h3 style='color: {accent_color} !important; margin-top: 0;'>📊 Automated Executive Intelligence Brief</h3>
                         {report_text}
                     </div>
                     """, unsafe_allow_html=True)
@@ -536,10 +563,10 @@ with tab7:
                         
                     st.markdown(f"""
                     <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
-                        <h3 style='color: {accent_color}; margin-top: 0;'>📊 Enterprise Intelligence Brief (Local Fallback)</h3>
-                        <p><b>Executive Financial Summary:</b><br>Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of <b>${total_revenue:,.2f}</b> generated from a highly engaged cohort of <b>{total_buyers}</b> unique buyers. Direct marketing expenditures totaled <b>${total_ad_spend:,.2f}</b>. This yields a highly optimized Return on Ad Spend (ROI) of <b>{curr_roi:,.1f}%</b> and a web conversion rate of <b>{curr_conv:,.2f}%</b>, indicating a highly efficient customer acquisition strategy.</p>
-                        <p><b>Inventory & Product Performance:</b><br>The catalog's performance was overwhelmingly anchored by the <b>{top_item}</b>, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.</p>
-                        <p><b>Strategic Machine Learning Recommendation:</b><br>Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.</p>
+                        <h3 style='color: {accent_color} !important; margin-top: 0;'>📊 Enterprise Intelligence Brief (Local Fallback)</h3>
+                        <p style='color: {text_color};'><b>Executive Financial Summary:</b><br>Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of <b>${total_revenue:,.2f}</b> generated from a highly engaged cohort of <b>{total_buyers}</b> unique buyers. Direct marketing expenditures totaled <b>${total_ad_spend:,.2f}</b>. This yields a highly optimized Return on Ad Spend (ROI) of <b>{curr_roi:,.1f}%</b> and a web conversion rate of <b>{curr_conv:,.2f}%</b>, indicating a highly efficient customer acquisition strategy.</p>
+                        <p style='color: {text_color};'><b>Inventory & Product Performance:</b><br>The catalog's performance was overwhelmingly anchored by the <b>{top_item}</b>, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.</p>
+                        <p style='color: {text_color};'><b>Strategic Machine Learning Recommendation:</b><br>Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.</p>
                     </div>
                     """, unsafe_allow_html=True)
     else:
