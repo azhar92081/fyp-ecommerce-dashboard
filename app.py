@@ -374,12 +374,31 @@ with tab5:
             try:
                 future_dates, predictions = get_nn_predictions(daily_sales['Date'].tolist(), daily_sales['TotalSales'].tolist())
                 
+                total_projected = sum(predictions)
+                avg_projected = np.mean(predictions)
+                
+                p_col1, p_col2, p_col3 = st.columns(3)
+                p_col1.metric("30-Day Projected Revenue", f"${total_projected:,.0f}")
+                p_col2.metric("Avg. Daily Projected Sales", f"${avg_projected:,.0f}")
+                p_col3.metric("Model Architecture", "Scikit-Learn MLP", delta_color="off")
+                
+                st.markdown("---")
+                
                 if len(predictions) > 0 and predictions[-1] < (predictions[0] * 0.85): 
                     trigger_alert("Automated Warning: Forecasted revenue drop detected by Neural Net.", "FORECAST_WARNING")
                 
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
                 fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
+                
+                fig.update_layout(
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0)"),
+                    yaxis=dict(tickprefix="$")
+                )
+                
                 st.plotly_chart(fig, use_container_width=True)
                 st.success("✅ Deep Learning Inference Complete. Model cached for performance.")
             except Exception as e:
@@ -402,7 +421,6 @@ with tab7:
             top_item = top_products.iloc[-1]['Description'] if not top_products.empty else "N/A"
             with st.spinner("Executing direct handshake with Google AI..."):
                 try:
-                    # Note: We pass the dynamically calculated curr_roi and curr_conv here for maximum accuracy
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, curr_roi, curr_conv, api_key)
                     st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
                     st.markdown("### 📊 Automated Executive Intelligence Brief")
