@@ -194,10 +194,23 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
     clean_key = raw_key.strip().replace('"', '').replace("'", "")
     genai.configure(api_key=clean_key)
     
+    # --- UPDATED MARKDOWN PROMPT ENGINEERING ---
     context_prompt = f"""
     Act as an expert Chief Financial Officer. I will provide you with the live metrics from my e-commerce dashboard database. 
-    Write a highly professional, 3-paragraph executive summary detailing our performance and offering one strategic recommendation.
-    Here is the live data: Total Revenue: USD {rev:,.2f}, Unique Buyers: {buyers}, Ad Spend: USD {spend:,.2f}, Top Product: {item}, ROI: {roi:,.1f}%, Conversion Rate: {conv:,.2f}%.
+    Your task is to write a highly professional executive summary detailing our performance and offering strategic recommendations.
+    
+    CRITICAL FORMATTING RULES:
+    1. Do not write a dense wall of text. Use Markdown to make it highly scannable.
+    2. Bold all key metrics and financial numbers so they stand out immediately.
+    3. Use a bulleted list for your strategic recommendations.
+    
+    Here is the live data: 
+    - Total Revenue: USD {rev:,.2f}
+    - Unique Buyers: {buyers}
+    - Ad Spend: USD {spend:,.2f}
+    - Top Product: {item}
+    - ROI: {roi:,.1f}%
+    - Conversion Rate: {conv:,.2f}%
     """
     model = genai.GenerativeModel('gemini-2.5-flash')
     response = model.generate_content(context_prompt)
@@ -232,7 +245,6 @@ with tab2:
     st.subheader("Top Performing Products")
     st.plotly_chart(px.bar(top_products, x='TotalSales', y='Description', orientation='h', color_discrete_sequence=[chart_palette[0]]), use_container_width=True)
 
-# --- THE FIX: ADDING THE ENTERPRISE CLUSTER SUMMARY TABLE ---
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
     
@@ -248,10 +260,8 @@ with tab3:
     rfm_df.rename(columns={'InvoiceDate': 'Recency', freq_col: 'Frequency', 'TotalSales': 'Monetary'}, inplace=True)
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     
-    # Render the 3D Plotly Chart
     st.plotly_chart(px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette), use_container_width=True)
     
-    # Render the Business Logic Table underneath
     st.markdown("### 📊 Cluster Intelligence Summary")
     st.write("The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:")
     
@@ -270,7 +280,6 @@ with tab3:
         'Monetary': 'Avg. Total Spend ($)'
     }, inplace=True)
     
-    # Clean up the numbers for display
     cluster_summary['Avg. Days Since Last Order'] = cluster_summary['Avg. Days Since Last Order'].round(0).astype(int)
     cluster_summary['Avg. Total Orders'] = cluster_summary['Avg. Total Orders'].round(1)
     cluster_summary['Avg. Total Spend ($)'] = cluster_summary['Avg. Total Spend ($)'].round(2)
