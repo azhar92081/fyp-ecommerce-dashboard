@@ -19,13 +19,6 @@ st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide"
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def hex_to_rgba(hex_color, alpha):
-    hex_color = hex_color.lstrip('#')
-    r = int(hex_color[0:2], 16)
-    g = int(hex_color[2:4], 16)
-    b = int(hex_color[4:6], 16)
-    return f"rgba({r}, {g}, {b}, {alpha})"
-
 @st.cache_resource
 def auto_provision_db_v2():
     conn = sqlite3.connect('enterprise_backend.db', timeout=15)
@@ -43,11 +36,10 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- 🎨 ADVANCED RESPONSIVE DAY/NIGHT CSS INJECTION ---
+# --- 🎨 PURIFIED RESPONSIVE CSS ---
 if night_mode:
     bg_color = "#0E1117" 
     card_bg = "#161B22"
-    hover_bg = "rgba(22, 27, 34, 1)"
     border_color = "#30363D"
     text_color = "#E5E7EB"
     accent_color = "#00E5FF"
@@ -55,7 +47,6 @@ if night_mode:
 else:
     bg_color = "#F8FAFC"
     card_bg = "#FFFFFF"
-    hover_bg = "rgba(255, 255, 255, 1)"
     border_color = "#E2E8F0"
     text_color = "#0F172A"
     accent_color = "#2563EB"
@@ -65,9 +56,11 @@ theme_css = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
-    html, body, [class*="css"]  {{ font-family: 'Inter', sans-serif !important; }}
+    /* Safely apply fonts without breaking tooltips */
+    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; }}
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-    h1, h2, h3, h4, h5, h6, p, span, div {{ color: {text_color} !important; }}
+    
+    /* Clean up Streamlit UI artifacts */
     #MainMenu {{visibility: hidden;}}
     header {{visibility: hidden;}}
     footer {{visibility: hidden;}}
@@ -88,7 +81,6 @@ theme_css = f"""
         transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }}
     div[data-testid="metric-container"]:hover {{ transform: translateY(-5px); border-color: {accent_color}; box-shadow: 0 12px 20px rgba(0,0,0,0.1); }}
-    div[data-testid="stMetricValue"] {{ color: {text_color} !important; font-weight: 800; font-family: 'Inter', sans-serif; }}
     
     /* Sleek Segmented Tabs */
     .stTabs [data-baseweb="tab-list"] {{ gap: 8px; padding-bottom: 5px; overflow-x: auto; }}
@@ -98,13 +90,6 @@ theme_css = f"""
     
     /* Dataframe Borders */
     [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; border: 1px solid {border_color}; }}
-    
-    @media (max-width: 768px) {{
-        div[data-testid="metric-container"] {{ padding: 16px; }}
-        h1 {{ font-size: 1.8rem !important; }}
-        h3 {{ font-size: 1.2rem !important; }}
-        .stTabs [data-baseweb="tab"] {{ padding: 8px 12px; font-size: 0.9rem; }}
-    }}
 </style>
 """
 st.markdown(theme_css, unsafe_allow_html=True)
@@ -114,7 +99,7 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
 if not st.session_state['logged_in']:
-    st.markdown(f"<h1 style='text-align: center; color: {accent_color} !important; margin-top: 10vh;'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: {accent_color}; margin-top: 10vh;'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; margin-bottom: 30px; font-size: 1.1rem;'>Authenticate to access intelligence dashboard</p>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
@@ -136,10 +121,10 @@ if not st.session_state['logged_in']:
                     st.error("❌ Invalid security credentials.")
     st.stop()
 
-st.sidebar.markdown("""
+st.sidebar.markdown(f"""
 <div class="pulse-container">
     <div class="pulse-dot"></div>
-    <div class="pulse-text">System Online - Live Connection</div>
+    <div class="pulse-text" style="color: {text_color};">System Online - Live Connection</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -148,7 +133,7 @@ if st.sidebar.button("🚪 Secure Logout", use_container_width=True):
     st.session_state['logged_in'] = False
     st.rerun()
 
-st.markdown(f"<h1 style='color: {accent_color} !important; padding-bottom: 20px; font-weight: 800;'>🛍️ Advanced E-commerce & Customer Intelligence</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='color: {accent_color}; padding-bottom: 20px; font-weight: 800;'>🛍️ Advanced E-commerce & Customer Intelligence</h1>", unsafe_allow_html=True)
 
 st.sidebar.header("🧠 AI Configuration")
 vault_file = "secure_vault.txt"
@@ -339,15 +324,14 @@ with tab1:
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    # THE FIX: Custom hovertemplates force HTML solid rendering for the numbers
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=hex_to_rgba(chart_palette[0], 0.3), width=1), hovertemplate='Date: %{x}<br>Raw Revenue: <b>$%{y:,.0f}</b><extra></extra>'))
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3), hovertemplate='Date: %{x}<br>7-Day Trend: <b>$%{y:,.0f}</b><extra></extra>'))
+    # Safely ignoring the raw line in the hover box to prevent mixing/ghosts
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3, hoverinfo='skip'))
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
-        font=dict(color=text_color, family="Inter"),
-        hovermode="x",
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
+        font=dict(color=text_color),
+        hovermode="x unified",
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
@@ -368,15 +352,9 @@ with tab2:
         text='TotalSales', 
         color_discrete_sequence=[chart_palette[0]]
     )
-    # THE FIX: Custom hovertemplate for bar charts
-    fig_bar.update_traces(
-        texttemplate='$%{text:,.0f}', textposition='inside',
-        hovertemplate='Product: %{y}<br>Sales: <b>$%{x:,.0f}</b><extra></extra>',
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color)
-    )
+    fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
-        font=dict(color=text_color, family="Inter"),
-        hovermode="closest",
+        font=dict(color=text_color),
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
@@ -400,16 +378,8 @@ with tab3:
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
-    
-    # THE FIX: Custom hovertemplate for 3D Scatter
-    fig_scatter.update_traces(
-        hovertemplate='Recency: %{x} days<br>Frequency: %{y} orders<br>Monetary: <b>$%{z:,.0f}</b><extra></extra>',
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color)
-    )
-    
     fig_scatter.update_layout(
-        font=dict(color=text_color, family="Inter"),
-        hovermode="closest",
+        font=dict(color=text_color),
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
@@ -460,15 +430,13 @@ with tab4:
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
     
     fig_web = go.Figure()
-    # THE FIX: Custom HTML hovertemplates
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=hex_to_rgba(chart_palette[1], 0.3), hovertemplate='Date: %{x}<br>Daily Visitors: <b>%{y:,.0f}</b><extra></extra>'))
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3), hovertemplate='Date: %{x}<br>7-Day Trend: <b>%{y:,.0f}</b><extra></extra>'))
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3, hoverinfo='skip'))
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
     
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
-        font=dict(color=text_color, family="Inter"),
-        hovermode="x",
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
+        font=dict(color=text_color),
+        hovermode="x unified",
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -501,15 +469,13 @@ with tab5:
                     trigger_alert("Automated Warning: Forecasted revenue drop detected by Neural Net.", "FORECAST_WARNING")
                 
                 fig = go.Figure()
-                # THE FIX: Custom HTML hovertemplates
-                fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0]), hovertemplate='Date: %{x}<br>Historical Sales: <b>$%{y:,.0f}</b><extra></extra>'))
-                fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot'), hovertemplate='Date: %{x}<br>Projected Sales: <b>$%{y:,.0f}</b><extra></extra>'))
+                fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
+                fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
                 
                 fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
-                    font=dict(color=text_color, family="Inter"),
-                    hovermode="x",
-                    hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
+                    font=dict(color=text_color),
+                    hovermode="x unified",
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
@@ -559,7 +525,7 @@ with tab7:
                     st.markdown(f"""
                     <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
                         <h3 style='color: {accent_color} !important; margin-top: 0;'>📊 Automated Executive Intelligence Brief</h3>
-                        <div style='font-family: "Inter", sans-serif; line-height: 1.6;'>
+                        <div style='line-height: 1.6; color: {text_color};'>
                         {report_text}
                         </div>
                     </div>
@@ -575,9 +541,9 @@ with tab7:
                     st.markdown(f"""
                     <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
                         <h3 style='color: {accent_color} !important; margin-top: 0;'>📊 Enterprise Intelligence Brief (Local Fallback)</h3>
-                        <p style='color: {text_color}; font-family: "Inter", sans-serif;'><b>Executive Financial Summary:</b><br>Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of <b>${total_revenue:,.2f}</b> generated from a highly engaged cohort of <b>{total_buyers}</b> unique buyers. Direct marketing expenditures totaled <b>${total_ad_spend:,.2f}</b>. This yields a highly optimized Return on Ad Spend (ROI) of <b>{curr_roi:,.1f}%</b> and a web conversion rate of <b>{curr_conv:,.2f}%</b>, indicating a highly efficient customer acquisition strategy.</p>
-                        <p style='color: {text_color}; font-family: "Inter", sans-serif;'><b>Inventory & Product Performance:</b><br>The catalog's performance was overwhelmingly anchored by the <b>{top_item}</b>, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.</p>
-                        <p style='color: {text_color}; font-family: "Inter", sans-serif;'><b>Strategic Machine Learning Recommendation:</b><br>Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.</p>
+                        <p style='color: {text_color};'><b>Executive Financial Summary:</b><br>Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of <b>${total_revenue:,.2f}</b> generated from a highly engaged cohort of <b>{total_buyers}</b> unique buyers. Direct marketing expenditures totaled <b>${total_ad_spend:,.2f}</b>. This yields a highly optimized Return on Ad Spend (ROI) of <b>{curr_roi:,.1f}%</b> and a web conversion rate of <b>{curr_conv:,.2f}%</b>, indicating a highly efficient customer acquisition strategy.</p>
+                        <p style='color: {text_color};'><b>Inventory & Product Performance:</b><br>The catalog's performance was overwhelmingly anchored by the <b>{top_item}</b>, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.</p>
+                        <p style='color: {text_color};'><b>Strategic Machine Learning Recommendation:</b><br>Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.</p>
                     </div>
                     """, unsafe_allow_html=True)
     else:
