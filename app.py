@@ -13,7 +13,7 @@ import hashlib
 import os
 import google.generativeai as genai
 
-# Page Config must be the first command
+# Page Config
 st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide", page_icon="🛍️", initial_sidebar_state="expanded")
 
 def hash_password(password):
@@ -36,7 +36,7 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- 🎨 ADVANCED RESPONSIVE DAY/NIGHT CSS INJECTION ---
+# --- 🎨 ADVANCED RESPONSIVE DAY/NIGHT CSS INJECTION WITH FONTS & ANIMATIONS ---
 if night_mode:
     bg_color = "#0E1117" 
     card_bg = "#161B22"
@@ -54,13 +54,24 @@ else:
     
 theme_css = f"""
 <style>
-    /* Global App Styling */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    
+    /* Global App Styling & Fonts */
+    html, body, [class*="css"]  {{
+        font-family: 'Inter', sans-serif !important;
+    }}
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
     h1, h2, h3, h4, h5, h6, p, span, div {{ color: {text_color} !important; }}
     #MainMenu {{visibility: hidden;}}
     header {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     
+    /* Live Pulsing Status Indicator */
+    .pulse-container {{ display: flex; align-items: center; gap: 10px; margin-bottom: 25px; padding: 10px 15px; background: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; width: fit-content;}}
+    .pulse-dot {{ width: 12px; height: 12px; background-color: #10B981; border-radius: 50%; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse 1.5s infinite; }}
+    @keyframes pulse {{ 0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }} 70% {{ transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }} 100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }} }}
+    .pulse-text {{ font-size: 0.9rem; font-weight: 600; color: {text_color}; letter-spacing: 0.5px;}}
+
     /* Premium Floating Cards for Metrics */
     div[data-testid="metric-container"] {{
         background-color: {card_bg};
@@ -75,53 +86,22 @@ theme_css = f"""
         border-color: {accent_color};
         box-shadow: 0 12px 20px rgba(0,0,0,0.1);
     }}
-    div[data-testid="stMetricValue"] {{ color: {text_color} !important; font-weight: 700; }}
+    div[data-testid="stMetricValue"] {{ color: {text_color} !important; font-weight: 800; font-family: 'Inter', sans-serif; }}
     
     /* Sleek Segmented Tabs */
-    .stTabs [data-baseweb="tab-list"] {{ 
-        gap: 8px; 
-        padding-bottom: 5px;
-        overflow-x: auto; /* Enables smooth scrolling on mobile */
-    }}
-    .stTabs [data-baseweb="tab"] {{ 
-        background-color: transparent; 
-        border-radius: 8px; 
-        padding: 10px 20px; 
-        font-weight: 600; 
-        transition: background-color 0.2s ease;
-        white-space: nowrap;
-    }}
+    .stTabs [data-baseweb="tab-list"] {{ gap: 8px; padding-bottom: 5px; overflow-x: auto; }}
+    .stTabs [data-baseweb="tab"] {{ background-color: transparent; border-radius: 8px; padding: 10px 20px; font-weight: 600; transition: background-color 0.2s ease; white-space: nowrap; }}
     .stTabs [data-baseweb="tab"]:hover {{ background-color: {border_color}; }}
-    .stTabs [aria-selected="true"] {{ 
-        background-color: {card_bg} !important; 
-        border: 1px solid {border_color} !important;
-        border-bottom: 3px solid {accent_color} !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }}
+    .stTabs [aria-selected="true"] {{ background-color: {card_bg} !important; border: 1px solid {border_color} !important; border-bottom: 3px solid {accent_color} !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }}
     
     /* Elegant Buttons */
-    .stButton>button {{
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        border: 1px solid {border_color};
-        background-color: {card_bg};
-        color: {text_color};
-    }}
-    .stButton>button:hover {{
-        border-color: {accent_color};
-        color: {accent_color} !important;
-        box-shadow: 0 4px 12px rgba(0, 229, 255, 0.15);
-    }}
+    .stButton>button {{ border-radius: 8px; font-weight: 600; transition: all 0.3s ease; border: 1px solid {border_color}; background-color: {card_bg}; color: {text_color}; }}
+    .stButton>button:hover {{ border-color: {accent_color}; color: {accent_color} !important; box-shadow: 0 4px 12px rgba(0, 229, 255, 0.15); }}
     
     /* Dataframe & Table Borders */
-    [data-testid="stDataFrame"] {{
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid {border_color};
-    }}
+    [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; border: 1px solid {border_color}; }}
     
-    /* Perfect Mobile Responsiveness (Media Queries) */
+    /* Perfect Mobile Responsiveness */
     @media (max-width: 768px) {{
         div[data-testid="metric-container"] {{ padding: 16px; }}
         h1 {{ font-size: 1.8rem !important; }}
@@ -158,6 +138,13 @@ if not st.session_state['logged_in']:
                 else:
                     st.error("❌ Invalid security credentials.")
     st.stop()
+
+st.sidebar.markdown("""
+<div class="pulse-container">
+    <div class="pulse-dot"></div>
+    <div class="pulse-text">System Online - Live Connection</div>
+</div>
+""", unsafe_allow_html=True)
 
 st.sidebar.success(f"✅ Authenticated as: {st.session_state['role']}")
 if st.sidebar.button("🚪 Secure Logout", use_container_width=True):
@@ -358,16 +345,18 @@ with tab1:
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
-    # DYNAMIC FONT COLORING FOR PLOTLY based on Theme
+    fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
-        font=dict(color=text_color),
+        font=dict(color=text_color, family="Inter"),
+        hovermode="x unified",
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
         yaxis=dict(tickprefix="$")
     )
-    st.plotly_chart(fig_rev, use_container_width=True)
+    # The config strips out the clunky Plotly toolbar!
+    st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False})
 
 with tab2:
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
@@ -383,14 +372,14 @@ with tab2:
     )
     fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
-        font=dict(color=text_color),
+        font=dict(color=text_color, family="Inter"),
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)"
     )
     
-    st.plotly_chart(fig_bar, use_container_width=True)
+    st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
 
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
@@ -409,11 +398,12 @@ with tab3:
     
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
     fig_scatter.update_layout(
-        font=dict(color=text_color),
+        font=dict(color=text_color, family="Inter"),
         paper_bgcolor="rgba(0,0,0,0)", 
-        plot_bgcolor="rgba(0,0,0,0)"
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=0, b=0)
     )
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
     
     st.markdown("### 📊 Cluster Intelligence Summary")
     st.write("The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:")
@@ -462,14 +452,16 @@ with tab4:
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3))
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
     
+    fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
-        font=dict(color=text_color),
+        font=dict(color=text_color, family="Inter"),
+        hovermode="x unified",
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
     )
-    st.plotly_chart(fig_web, use_container_width=True)
+    st.plotly_chart(fig_web, use_container_width=True, config={'displayModeBar': False})
 
 with tab5:
     st.subheader("🧠 Deep Learning (Neural Network) 30-Day Sales Forecast")
@@ -499,8 +491,10 @@ with tab5:
                 fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
                 fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
                 
+                fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
-                    font=dict(color=text_color),
+                    font=dict(color=text_color, family="Inter"),
+                    hovermode="x unified",
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
@@ -508,8 +502,8 @@ with tab5:
                     yaxis=dict(tickprefix="$")
                 )
                 
-                st.plotly_chart(fig, use_container_width=True)
-                st.success("✅ Deep Learning Inference Complete. Model cached for performance.")
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.toast("✅ Deep Learning Inference Complete. Model cached.", icon="🧠")
             except Exception as e:
                 st.error(f"Neural Network Training Failed. Please check logs. Error: {e}")
 
@@ -545,12 +539,14 @@ with tab7:
             with st.spinner("Executing direct handshake with Google AI..."):
                 try:
                     report_text, successful_model = fetch_ai_insights(total_revenue, total_buyers, total_ad_spend, top_item, curr_roi, curr_conv, api_key)
-                    st.success(f"✅ AI Analysis Complete (Connected securely to {successful_model})")
+                    st.toast(f"✅ AI Analysis Complete ({successful_model})", icon="✨")
                     
                     st.markdown(f"""
                     <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
                         <h3 style='color: {accent_color} !important; margin-top: 0;'>📊 Automated Executive Intelligence Brief</h3>
+                        <div style='font-family: "Inter", sans-serif; line-height: 1.6;'>
                         {report_text}
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -564,9 +560,9 @@ with tab7:
                     st.markdown(f"""
                     <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
                         <h3 style='color: {accent_color} !important; margin-top: 0;'>📊 Enterprise Intelligence Brief (Local Fallback)</h3>
-                        <p style='color: {text_color};'><b>Executive Financial Summary:</b><br>Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of <b>${total_revenue:,.2f}</b> generated from a highly engaged cohort of <b>{total_buyers}</b> unique buyers. Direct marketing expenditures totaled <b>${total_ad_spend:,.2f}</b>. This yields a highly optimized Return on Ad Spend (ROI) of <b>{curr_roi:,.1f}%</b> and a web conversion rate of <b>{curr_conv:,.2f}%</b>, indicating a highly efficient customer acquisition strategy.</p>
-                        <p style='color: {text_color};'><b>Inventory & Product Performance:</b><br>The catalog's performance was overwhelmingly anchored by the <b>{top_item}</b>, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.</p>
-                        <p style='color: {text_color};'><b>Strategic Machine Learning Recommendation:</b><br>Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.</p>
+                        <p style='color: {text_color}; font-family: "Inter", sans-serif;'><b>Executive Financial Summary:</b><br>Over the selected operational period, the enterprise dashboard recorded a total Gross Revenue of <b>${total_revenue:,.2f}</b> generated from a highly engaged cohort of <b>{total_buyers}</b> unique buyers. Direct marketing expenditures totaled <b>${total_ad_spend:,.2f}</b>. This yields a highly optimized Return on Ad Spend (ROI) of <b>{curr_roi:,.1f}%</b> and a web conversion rate of <b>{curr_conv:,.2f}%</b>, indicating a highly efficient customer acquisition strategy.</p>
+                        <p style='color: {text_color}; font-family: "Inter", sans-serif;'><b>Inventory & Product Performance:</b><br>The catalog's performance was overwhelmingly anchored by the <b>{top_item}</b>, which emerged as the highest-grossing product across all regions. Supply chain resources and targeted marketing efforts should be aggressively allocated to support this specific demand trajectory and prevent costly stockouts.</p>
+                        <p style='color: {text_color}; font-family: "Inter", sans-serif;'><b>Strategic Machine Learning Recommendation:</b><br>Based on the RFM spatial segmentation derived in Tab 3 and the current polynomial growth trends in Tab 5, we strongly recommend initiating a targeted remarketing campaign focused specifically on 'Cluster 2' (High-Frequency, Low-Recency) customers. Engaging this specific segment will maximize customer lifetime value and immediately mitigate the revenue drop currently forecasted by the automated system alerts.</p>
                     </div>
                     """, unsafe_allow_html=True)
     else:
