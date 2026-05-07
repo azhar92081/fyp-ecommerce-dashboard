@@ -40,14 +40,13 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- 🎨 SAFE NATIVE THEME ROUTING ---
+# --- THEME ROUTING ---
 if night_mode:
     bg_color = "#0E1117" 
     card_bg = "#161B22"
     border_color = "#30363D"
     text_color = "#E5E7EB"
     accent_color = "#00E5FF"
-    plotly_template = "plotly_dark"  # The magic key for Dark Mode
     chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"]
 else:
     bg_color = "#F8FAFC"
@@ -55,15 +54,15 @@ else:
     border_color = "#E2E8F0"
     text_color = "#0F172A"
     accent_color = "#2563EB"
-    plotly_template = "plotly_white" # The magic key for Light Mode
     chart_palette = ["#2563EB", "#DC2626", "#D97706", "#7C3AED", "#059669", "#EA580C"] 
     
+# --- SAFE UI CSS ---
 theme_css = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; }}
-    .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+    .stApp {{ background-color: {bg_color}; }}
     
     #MainMenu {{visibility: hidden;}}
     header {{visibility: hidden;}}
@@ -325,23 +324,30 @@ with tab1:
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    # Using hex_to_rgba ensures the line is faded without ruining the tooltip
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=hex_to_rgba(chart_palette[0], 0.3), width=1), hoverinfo='skip'))
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
+    # hoverinfo='skip' ensures the raw line doesn't clutter the view
+    fig_rev.add_trace(go.Scatter(
+        x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', 
+        line=dict(color=hex_to_rgba(chart_palette[0], 0.3), width=1), hoverinfo='skip'
+    ))
+    # <extra></extra> severs Plotly's transparent text logic
+    fig_rev.add_trace(go.Scatter(
+        x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', 
+        line=dict(color=chart_palette[0], width=3),
+        hovertemplate='<b>Date: %{x}</b><br>Revenue: $%{y:,.0f}<extra></extra>'
+    ))
     
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
-        template=plotly_template, # THE FIX: Locks Plotly into your toggled mode
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        hovermode="x unified",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        hovermode="x", # Removes the buggy white "unified" background
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, font_family="Inter", bordercolor=border_color),
         font=dict(color=text_color, family="Inter"),
         margin=dict(l=0, r=0, t=20, b=0), 
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="rgba(0,0,0,0)", 
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
         yaxis=dict(tickprefix="$")
     )
-    # THE FIX: theme=None blocks Streamlit from forcing Light Mode onto Plotly
+    # theme=None ensures Streamlit respects our explicit hoverlabel dict
     st.plotly_chart(fig_rev, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab2:
@@ -352,16 +358,18 @@ with tab2:
         top_products, x='TotalSales', y='Description', orientation='h', text='TotalSales', 
         color_discrete_sequence=[chart_palette[0]]
     )
-    fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
+    fig_bar.update_traces(
+        texttemplate='$%{text:,.0f}', textposition='inside',
+        hovertemplate='<b>%{y}</b><br>Sales: $%{x:,.0f}<extra></extra>'
+    )
     fig_bar.update_layout(
-        template=plotly_template,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
         hovermode="closest",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, font_family="Inter", bordercolor=border_color),
         font=dict(color=text_color, family="Inter"),
         uniformtext_minsize=10, 
-        uniformtext_mode='hide',
+        uniformtext_mode='hide', 
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
     )
     st.plotly_chart(fig_bar, use_container_width=True, theme=None, config={'displayModeBar': False})
@@ -382,13 +390,16 @@ with tab3:
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
+    fig_scatter.update_traces(
+        hovertemplate='<b>Cluster %{text}</b><br>Recency: %{x} days<br>Frequency: %{y}<br>Monetary: $%{z:,.0f}<extra></extra>',
+        text=rfm_df['Cluster']
+    )
     fig_scatter.update_layout(
-        template=plotly_template,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
         hovermode="closest",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, font_family="Inter", bordercolor=border_color),
         font=dict(color=text_color, family="Inter"),
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
     )
     st.plotly_chart(fig_scatter, use_container_width=True, theme=None, config={'displayModeBar': False})
@@ -437,18 +448,24 @@ with tab4:
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
     
     fig_web = go.Figure()
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=hex_to_rgba(chart_palette[1], 0.3), hoverinfo='skip'))
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
+    fig_web.add_trace(go.Scatter(
+        x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', 
+        fillcolor=hex_to_rgba(chart_palette[1], 0.3), hoverinfo='skip'
+    ))
+    fig_web.add_trace(go.Scatter(
+        x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', 
+        line=dict(color=chart_palette[1], width=3),
+        hovertemplate='<b>Date: %{x}</b><br>Visitors: %{y:,.0f}<extra></extra>'
+    ))
     
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
-        template=plotly_template,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        hovermode="x unified",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        hovermode="x",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, font_family="Inter", bordercolor=border_color),
         font=dict(color=text_color, family="Inter"),
         margin=dict(l=0, r=0, t=20, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
     )
     st.plotly_chart(fig_web, use_container_width=True, theme=None, config={'displayModeBar': False})
@@ -478,18 +495,25 @@ with tab5:
                     trigger_alert("Automated Warning: Forecasted revenue drop detected by Neural Net.", "FORECAST_WARNING")
                 
                 fig = go.Figure()
-                fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
-                fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
+                fig.add_trace(go.Scatter(
+                    x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', 
+                    line=dict(color=chart_palette[0]),
+                    hovertemplate='<b>Date: %{x}</b><br>Historical: $%{y:,.0f}<extra></extra>'
+                ))
+                fig.add_trace(go.Scatter(
+                    x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', 
+                    line=dict(color=chart_palette[1], dash='dot'),
+                    hovertemplate='<b>Date: %{x}</b><br>Projected: $%{y:,.0f}<extra></extra>'
+                ))
                 
                 fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
-                    template=plotly_template,
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    hovermode="x unified",
-                    hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+                    hovermode="x",
+                    hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, font_family="Inter", bordercolor=border_color),
                     font=dict(color=text_color, family="Inter"),
                     margin=dict(l=0, r=0, t=20, b=0),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
                     legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0)"),
                     yaxis=dict(tickprefix="$")
                 )
@@ -559,3 +583,4 @@ with tab7:
                     """, unsafe_allow_html=True)
     else:
         st.warning("⚠️ Paste your API Key in the left sidebar and click 'Save Key to OS Vault' to activate.")
+EOF
