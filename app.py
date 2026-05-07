@@ -36,21 +36,19 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- 🎨 HIGH CONTRAST CSS INJECTION ---
+# --- 🎨 ADVANCED RESPONSIVE DAY/NIGHT CSS INJECTION WITH FONTS & ANIMATIONS ---
 if night_mode:
-    bg_color = "#0B0F19" 
+    bg_color = "#0E1117" 
     card_bg = "#161B22"
     border_color = "#30363D"
-    text_color = "#FFFFFF" 
-    sub_text = "#9CA3AF"
+    text_color = "#E5E7EB"
     accent_color = "#00E5FF"
     chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"]
 else:
-    bg_color = "#F4F6F9"
+    bg_color = "#F8FAFC"
     card_bg = "#FFFFFF"
     border_color = "#E2E8F0"
-    text_color = "#000000"
-    sub_text = "#475569"
+    text_color = "#0F172A"
     accent_color = "#2563EB"
     chart_palette = ["#2563EB", "#DC2626", "#D97706", "#7C3AED", "#059669", "#EA580C"] 
     
@@ -58,68 +56,58 @@ theme_css = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
-    /* 1. Kill the Streamlit Fading Effect */
-    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; }}
-    .stApp, .stApp > header {{ background-color: {bg_color} !important; color: {text_color} !important; }}
-    
-    h1, h2, h3, h4, h5, h6, p, span, label {{ 
-        color: {text_color} !important; 
-        opacity: 1 !important; 
+    /* Global App Styling & Fonts */
+    html, body, [class*="css"]  {{
+        font-family: 'Inter', sans-serif !important;
     }}
-    
-    #MainMenu, header, footer {{ visibility: hidden; }}
-    
-    /* 2. Fix the Metric Cards (No more bleeding colors) */
-    div[data-testid="metric-container"] {{
-        background-color: {card_bg} !important;
-        border: 1px solid {border_color} !important;
-        padding: 24px !important;
-        border-radius: 12px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
-        transition: transform 0.2s ease, border-color 0.2s ease;
-    }}
-    div[data-testid="metric-container"]:hover {{
-        transform: translateY(-5px);
-        border-color: {accent_color} !important;
-    }}
-    
-    /* 3. Make the Metric Numbers POP */
-    div[data-testid="stMetricValue"] > div {{ 
-        color: {accent_color} !important; 
-        font-weight: 800 !important; 
-        font-size: 2.2rem !important;
-        opacity: 1 !important;
-    }}
-    
-    /* Make Metric Labels slightly softer but NOT faded */
-    div[data-testid="stMetricLabel"] > div > div > p {{
-        color: {sub_text} !important;
-        font-weight: 600 !important;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
-        opacity: 1 !important;
-    }}
+    .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+    h1, h2, h3, h4, h5, h6, p, span, div {{ color: {text_color} !important; }}
+    #MainMenu {{visibility: hidden;}}
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
     
     /* Live Pulsing Status Indicator */
     .pulse-container {{ display: flex; align-items: center; gap: 10px; margin-bottom: 25px; padding: 10px 15px; background: {card_bg}; border: 1px solid {border_color}; border-radius: 8px; width: fit-content;}}
     .pulse-dot {{ width: 12px; height: 12px; background-color: #10B981; border-radius: 50%; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse 1.5s infinite; }}
     @keyframes pulse {{ 0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }} 70% {{ transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }} 100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }} }}
-    .pulse-text {{ font-size: 0.9rem; font-weight: 600; color: {text_color} !important; letter-spacing: 0.5px; opacity: 1 !important;}}
+    .pulse-text {{ font-size: 0.9rem; font-weight: 600; color: {text_color}; letter-spacing: 0.5px;}}
 
+    /* Premium Floating Cards for Metrics */
+    div[data-testid="metric-container"] {{
+        background-color: {card_bg};
+        border: 1px solid {border_color};
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }}
+    div[data-testid="metric-container"]:hover {{
+        transform: translateY(-5px);
+        border-color: {accent_color};
+        box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+    }}
+    div[data-testid="stMetricValue"] {{ color: {text_color} !important; font-weight: 800; font-family: 'Inter', sans-serif; }}
+    
     /* Sleek Segmented Tabs */
     .stTabs [data-baseweb="tab-list"] {{ gap: 8px; padding-bottom: 5px; overflow-x: auto; }}
-    .stTabs [data-baseweb="tab"] {{ background-color: transparent; border-radius: 8px; padding: 10px 20px; font-weight: 600; white-space: nowrap; opacity: 1 !important; color: {sub_text} !important;}}
+    .stTabs [data-baseweb="tab"] {{ background-color: transparent; border-radius: 8px; padding: 10px 20px; font-weight: 600; transition: background-color 0.2s ease; white-space: nowrap; }}
     .stTabs [data-baseweb="tab"]:hover {{ background-color: {border_color}; }}
-    .stTabs [aria-selected="true"] {{ background-color: {card_bg} !important; border: 1px solid {border_color} !important; border-bottom: 3px solid {accent_color} !important; color: {text_color} !important; }}
+    .stTabs [aria-selected="true"] {{ background-color: {card_bg} !important; border: 1px solid {border_color} !important; border-bottom: 3px solid {accent_color} !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }}
     
     /* Elegant Buttons */
-    .stButton>button {{ border-radius: 8px; font-weight: 600; border: 1px solid {border_color} !important; background-color: {card_bg} !important; color: {text_color} !important; opacity: 1 !important;}}
-    .stButton>button:hover {{ border-color: {accent_color} !important; color: {accent_color} !important; }}
+    .stButton>button {{ border-radius: 8px; font-weight: 600; transition: all 0.3s ease; border: 1px solid {border_color}; background-color: {card_bg}; color: {text_color}; }}
+    .stButton>button:hover {{ border-color: {accent_color}; color: {accent_color} !important; box-shadow: 0 4px 12px rgba(0, 229, 255, 0.15); }}
     
     /* Dataframe & Table Borders */
-    [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; border: 1px solid {border_color}; opacity: 1 !important; background-color: {card_bg} !important; }}
+    [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; border: 1px solid {border_color}; }}
     
+    /* Perfect Mobile Responsiveness */
+    @media (max-width: 768px) {{
+        div[data-testid="metric-container"] {{ padding: 16px; }}
+        h1 {{ font-size: 1.8rem !important; }}
+        h3 {{ font-size: 1.2rem !important; }}
+        .stTabs [data-baseweb="tab"] {{ padding: 8px 12px; font-size: 0.9rem; }}
+    }}
 </style>
 """
 st.markdown(theme_css, unsafe_allow_html=True)
@@ -354,13 +342,14 @@ with tab1:
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.4))
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
         font=dict(color=text_color, family="Inter"),
         hovermode="x unified",
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
@@ -381,14 +370,14 @@ with tab2:
         text='TotalSales', 
         color_discrete_sequence=[chart_palette[0]]
     )
-    fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside', textfont=dict(color="#FFFFFF", weight="bold"))
+    fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
         font=dict(color=text_color, family="Inter"),
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=20, b=0)
+        plot_bgcolor="rgba(0,0,0,0)"
     )
     
     st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
@@ -411,6 +400,7 @@ with tab3:
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
     fig_scatter.update_layout(
         font=dict(color=text_color, family="Inter"),
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
@@ -461,13 +451,14 @@ with tab4:
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
     
     fig_web = go.Figure()
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.4))
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3))
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
     
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
         font=dict(color=text_color, family="Inter"),
         hovermode="x unified",
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -507,6 +498,7 @@ with tab5:
                 fig.update_layout(
                     font=dict(color=text_color, family="Inter"),
                     hovermode="x unified",
+                    hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
