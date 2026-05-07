@@ -36,11 +36,10 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- 🎨 ADVANCED RESPONSIVE DAY/NIGHT CSS INJECTION WITH FONTS & ANIMATIONS ---
+# --- 🎨 ADVANCED RESPONSIVE DAY/NIGHT CSS INJECTION ---
 if night_mode:
     bg_color = "#0E1117" 
     card_bg = "#161B22"
-    hover_bg = "rgba(22, 27, 34, 1)" # THE FIX: Mathematically 100% solid opacity
     border_color = "#30363D"
     text_color = "#E5E7EB"
     accent_color = "#00E5FF"
@@ -48,7 +47,6 @@ if night_mode:
 else:
     bg_color = "#F8FAFC"
     card_bg = "#FFFFFF"
-    hover_bg = "rgba(255, 255, 255, 1)" # THE FIX: Mathematically 100% solid opacity
     border_color = "#E2E8F0"
     text_color = "#0F172A"
     accent_color = "#2563EB"
@@ -58,10 +56,7 @@ theme_css = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
-    /* Global App Styling & Fonts */
-    html, body, [class*="css"]  {{
-        font-family: 'Inter', sans-serif !important;
-    }}
+    html, body, [class*="css"]  {{ font-family: 'Inter', sans-serif !important; }}
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
     h1, h2, h3, h4, h5, h6, p, span, div {{ color: {text_color} !important; }}
     #MainMenu {{visibility: hidden;}}
@@ -74,7 +69,7 @@ theme_css = f"""
     @keyframes pulse {{ 0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }} 70% {{ transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }} 100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }} }}
     .pulse-text {{ font-size: 0.9rem; font-weight: 600; color: {text_color}; letter-spacing: 0.5px;}}
 
-    /* Premium Floating Cards for Metrics */
+    /* Premium Floating Cards */
     div[data-testid="metric-container"] {{
         background-color: {card_bg};
         border: 1px solid {border_color};
@@ -83,11 +78,7 @@ theme_css = f"""
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }}
-    div[data-testid="metric-container"]:hover {{
-        transform: translateY(-5px);
-        border-color: {accent_color};
-        box-shadow: 0 12px 20px rgba(0,0,0,0.1);
-    }}
+    div[data-testid="metric-container"]:hover {{ transform: translateY(-5px); border-color: {accent_color}; box-shadow: 0 12px 20px rgba(0,0,0,0.1); }}
     div[data-testid="stMetricValue"] {{ color: {text_color} !important; font-weight: 800; font-family: 'Inter', sans-serif; }}
     
     /* Sleek Segmented Tabs */
@@ -96,14 +87,9 @@ theme_css = f"""
     .stTabs [data-baseweb="tab"]:hover {{ background-color: {border_color}; }}
     .stTabs [aria-selected="true"] {{ background-color: {card_bg} !important; border: 1px solid {border_color} !important; border-bottom: 3px solid {accent_color} !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }}
     
-    /* Elegant Buttons */
-    .stButton>button {{ border-radius: 8px; font-weight: 600; transition: all 0.3s ease; border: 1px solid {border_color}; background-color: {card_bg}; color: {text_color}; }}
-    .stButton>button:hover {{ border-color: {accent_color}; color: {accent_color} !important; box-shadow: 0 4px 12px rgba(0, 229, 255, 0.15); }}
-    
-    /* Dataframe & Table Borders */
+    /* Dataframe Borders */
     [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; border: 1px solid {border_color}; }}
     
-    /* Perfect Mobile Responsiveness */
     @media (max-width: 768px) {{
         div[data-testid="metric-container"] {{ padding: 16px; }}
         h1 {{ font-size: 1.8rem !important; }}
@@ -344,15 +330,15 @@ with tab1:
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3))
+    # THE FIX: Added hoverinfo='skip' so the ghost tooltip doesn't spawn!
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3, hoverinfo='skip'))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
-    
-    fig_rev.update_traces(hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
     
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="closest", # THE FIX: Disables stacked boxes entirely
+        hovermode="x unified", # RESTORED: Beautiful unified crosshairs
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
@@ -373,13 +359,10 @@ with tab2:
         text='TotalSales', 
         color_discrete_sequence=[chart_palette[0]]
     )
-    fig_bar.update_traces(
-        texttemplate='$%{text:,.0f}', textposition='inside',
-        hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color)
-    )
+    fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="closest",
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
@@ -404,12 +387,9 @@ with tab3:
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
-    
-    fig_scatter.update_traces(hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
-    
     fig_scatter.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="closest",
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
@@ -460,15 +440,15 @@ with tab4:
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
     
     fig_web = go.Figure()
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3))
+    # THE FIX: Added hoverinfo='skip' so the ghost tooltip doesn't spawn!
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3, hoverinfo='skip'))
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
-    
-    fig_web.update_traces(hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
     
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="closest", # THE FIX: Disables stacked boxes entirely
+        hovermode="x unified", # RESTORED: Beautiful unified crosshairs
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -504,12 +484,11 @@ with tab5:
                 fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
                 fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
                 
-                fig.update_traces(hoverlabel=dict(bgcolor=hover_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
-                
                 fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
                     font=dict(color=text_color, family="Inter"),
-                    hovermode="closest", # THE FIX: Disables stacked boxes entirely
+                    hovermode="x unified",
+                    hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
