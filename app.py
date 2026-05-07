@@ -19,6 +19,14 @@ st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide"
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+# THE FIX: Converts hex to absolute RGBA to fade lines without fading tooltips
+def hex_to_rgba(hex_color, alpha):
+    hex_color = hex_color.lstrip('#')
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
 @st.cache_resource
 def auto_provision_db_v2():
     conn = sqlite3.connect('enterprise_backend.db', timeout=15)
@@ -330,14 +338,14 @@ with tab1:
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    # THE FIX: Added hoverinfo='skip' so the ghost tooltip doesn't spawn!
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3, hoverinfo='skip'))
+    # THE FIX: Removed opacity=0.3. Added hex_to_rgba to fade the line, but keep tooltip 100% solid.
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=hex_to_rgba(chart_palette[0], 0.3), width=1)))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="x unified", # RESTORED: Beautiful unified crosshairs
+        hovermode="x", # NO UNIFIED BOX
         hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
@@ -440,14 +448,14 @@ with tab4:
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
     
     fig_web = go.Figure()
-    # THE FIX: Added hoverinfo='skip' so the ghost tooltip doesn't spawn!
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3, hoverinfo='skip'))
+    # THE FIX: Removed opacity=0.3. Added hex_to_rgba to the fillcolor to keep tooltip 100% solid.
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=hex_to_rgba(chart_palette[1], 0.3)))
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
     
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="x unified", # RESTORED: Beautiful unified crosshairs
+        hovermode="x", # NO UNIFIED BOX
         hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
@@ -487,7 +495,7 @@ with tab5:
                 fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
                     font=dict(color=text_color, family="Inter"),
-                    hovermode="x unified",
+                    hovermode="x", # NO UNIFIED BOX
                     hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
