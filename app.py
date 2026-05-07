@@ -19,6 +19,10 @@ st.set_page_config(page_title="Enterprise Intelligence Dashboard", layout="wide"
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+def hex_to_rgba(hex_color, alpha):
+    hex_color = hex_color.lstrip('#')
+    return f"rgba({int(hex_color[0:2], 16)}, {int(hex_color[2:4], 16)}, {int(hex_color[4:6], 16)}, {alpha})"
+
 @st.cache_resource
 def auto_provision_db_v2():
     conn = sqlite3.connect('enterprise_backend.db', timeout=15)
@@ -43,17 +47,16 @@ if night_mode:
     border_color = "#30363D"
     text_color = "#E5E7EB"
     accent_color = "#00E5FF"
+    plotly_template = "plotly_dark"  # The magic key for Dark Mode
     chart_palette = ["#00E5FF", "#FF007F", "#FFD60A", "#8A2BE2", "#00F5D4", "#FF4D00"]
-    # Solid hex colors that simulate 30% opacity (Prevents tooltip bleeding)
-    faded_palette = ["#1A4B5C", "#4A1532"] 
 else:
     bg_color = "#F8FAFC"
     card_bg = "#FFFFFF"
     border_color = "#E2E8F0"
     text_color = "#0F172A"
     accent_color = "#2563EB"
+    plotly_template = "plotly_white" # The magic key for Light Mode
     chart_palette = ["#2563EB", "#DC2626", "#D97706", "#7C3AED", "#059669", "#EA580C"] 
-    faded_palette = ["#A9C2EB", "#F0B8B8"]
     
 theme_css = f"""
 <style>
@@ -322,19 +325,24 @@ with tab1:
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    # PURE NATIVE: Using solid faded color. No opacity. Tooltip stays solid.
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=faded_palette[0], width=1)))
+    # Using hex_to_rgba ensures the line is faded without ruining the tooltip
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=hex_to_rgba(chart_palette[0], 0.3), width=1), hoverinfo='skip'))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
+        template=plotly_template, # THE FIX: Locks Plotly into your toggled mode
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         hovermode="x unified",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        font=dict(color=text_color, family="Inter"),
         margin=dict(l=0, r=0, t=20, b=0), 
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
         yaxis=dict(tickprefix="$")
     )
-    # THE ULTIMATE FIX: Removed `theme=None`. Streamlit natively handles the dark tooltip.
-    st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False})
+    # THE FIX: theme=None blocks Streamlit from forcing Light Mode onto Plotly
+    st.plotly_chart(fig_rev, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab2:
     st.markdown(f"<h3 style='color: {text_color};'>Top Performing Products</h3>", unsafe_allow_html=True)
@@ -346,12 +354,17 @@ with tab2:
     )
     fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
+        template=plotly_template,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         hovermode="closest",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        font=dict(color=text_color, family="Inter"),
         uniformtext_minsize=10, 
-        uniformtext_mode='hide', 
+        uniformtext_mode='hide',
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_bar, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab3:
     st.markdown(f"<h3 style='color: {text_color};'>Unsupervised Customer Segmentation</h3>", unsafe_allow_html=True)
@@ -370,10 +383,15 @@ with tab3:
     
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
     fig_scatter.update_layout(
+        template=plotly_template,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         hovermode="closest",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        font=dict(color=text_color, family="Inter"),
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_scatter, use_container_width=True, theme=None, config={'displayModeBar': False})
     
     st.markdown(f"<h3 style='color: {text_color};'>📊 Cluster Intelligence Summary</h3>", unsafe_allow_html=True)
     st.markdown(f"<p style='color: {text_color};'>The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:</p>", unsafe_allow_html=True)
@@ -419,16 +437,21 @@ with tab4:
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
     
     fig_web = go.Figure()
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=faded_palette[1]))
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=hex_to_rgba(chart_palette[1], 0.3), hoverinfo='skip'))
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
     
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
+        template=plotly_template,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
         hovermode="x unified",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+        font=dict(color=text_color, family="Inter"),
         margin=dict(l=0, r=0, t=20, b=0),
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
     )
-    st.plotly_chart(fig_web, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_web, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab5:
     st.markdown(f"<h3 style='color: {text_color};'>🧠 Deep Learning (Neural Network) 30-Day Sales Forecast</h3>", unsafe_allow_html=True)
@@ -460,13 +483,18 @@ with tab5:
                 
                 fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
+                    template=plotly_template,
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
                     hovermode="x unified",
+                    hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_family="Inter", bordercolor=border_color),
+                    font=dict(color=text_color, family="Inter"),
                     margin=dict(l=0, r=0, t=20, b=0),
                     legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0)"),
                     yaxis=dict(tickprefix="$")
                 )
                 
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.plotly_chart(fig, use_container_width=True, theme=None, config={'displayModeBar': False})
                 st.toast("✅ Deep Learning Inference Complete. Model cached.", icon="🧠")
             except Exception as e:
                 st.error(f"Neural Network Training Failed. Please check logs. Error: {e}")
