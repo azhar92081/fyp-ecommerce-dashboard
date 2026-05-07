@@ -101,6 +101,9 @@ theme_css = f"""
     /* Dataframe & Table Borders */
     [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; border: 1px solid {border_color}; }}
     
+    /* THE NUCLEAR FIX: Brute-forcing Plotly SVG hover paths to be 100% solid */
+    g.hoverlayer path {{ fill-opacity: 1 !important; stroke-opacity: 1 !important; }}
+    
     /* Perfect Mobile Responsiveness */
     @media (max-width: 768px) {{
         div[data-testid="metric-container"] {{ padding: 16px; }}
@@ -348,7 +351,7 @@ with tab1:
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="x unified",
+        hovermode="x", # FIXED: No longer uses 'unified' which forces transparency
         hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
@@ -356,7 +359,6 @@ with tab1:
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
         yaxis=dict(tickprefix="$")
     )
-    # THE FIX: theme=None strips Streamlit's interference
     st.plotly_chart(fig_rev, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab2:
@@ -458,7 +460,7 @@ with tab4:
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="x unified",
+        hovermode="x", # FIXED
         hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
@@ -498,7 +500,7 @@ with tab5:
                 fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
                     font=dict(color=text_color, family="Inter"),
-                    hovermode="x unified",
+                    hovermode="x", # FIXED
                     hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
