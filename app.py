@@ -36,7 +36,7 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- 🎨 PURIFIED RESPONSIVE CSS ---
+# --- 🎨 SAFE RESPONSIVE CSS (NO GLOBAL TEXT OVERRIDES) ---
 if night_mode:
     bg_color = "#0E1117" 
     card_bg = "#161B22"
@@ -54,11 +54,8 @@ else:
     
 theme_css = f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-    
-    /* Safely apply fonts without breaking tooltips */
-    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; }}
-    .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+    /* Safe App Background */
+    .stApp {{ background-color: {bg_color}; }}
     
     /* Clean up Streamlit UI artifacts */
     #MainMenu {{visibility: hidden;}}
@@ -100,7 +97,7 @@ if 'logged_in' not in st.session_state:
 
 if not st.session_state['logged_in']:
     st.markdown(f"<h1 style='text-align: center; color: {accent_color}; margin-top: 10vh;'>🔒 Enterprise Secure Portal</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; margin-bottom: 30px; font-size: 1.1rem;'>Authenticate to access intelligence dashboard</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; margin-bottom: 30px; font-size: 1.1rem; color: {text_color};'>Authenticate to access intelligence dashboard</p>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         with st.form("login_form"):
@@ -280,7 +277,7 @@ def fetch_ai_insights(rev, buyers, spend, item, roi, conv, raw_key):
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📈 Financial KPIs", "🔍 Product Patterns", "🤖 ML Segments", "🌐 Web Traffic", "🧠 Neural Net Forecast", "🚨 System Alerts", "🧠 AI Analyst"])
 
 with tab1:
-    st.subheader("Executive Operations Overview")
+    st.markdown(f"<h3 style='color: {text_color};'>Executive Operations Overview</h3>", unsafe_allow_html=True)
     
     total_revenue = df['TotalSales'].sum()
     total_buyers = df['CustomerID'].nunique()
@@ -318,20 +315,20 @@ with tab1:
     col4.metric("Conversion", f"{curr_conv:,.2f}%", f"{conv_delta:+.2f}% (30d Trend)")
     
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.subheader("Gross Revenue Trajectory")
+    st.markdown(f"<h3 style='color: {text_color};'>Gross Revenue Trajectory</h3>", unsafe_allow_html=True)
     
     daily_revenue_chart = df.groupby('Date')['TotalSales'].sum().reset_index()
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    # Safely ignoring the raw line in the hover box to prevent mixing/ghosts
+    # NATIVE PLOTLY: opacity=0.3, hoverinfo='skip' guarantees no ghost boxes.
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3, hoverinfo='skip'))
-    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
+    fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3), hoverinfo='y+name'))
     
-    fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
         font=dict(color=text_color),
-        hovermode="x unified",
+        hovermode="x",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
@@ -341,8 +338,8 @@ with tab1:
     st.plotly_chart(fig_rev, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab2:
+    st.markdown(f"<h3 style='color: {text_color};'>Top Performing Products</h3>", unsafe_allow_html=True)
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
-    st.subheader("Top Performing Products")
     
     fig_bar = px.bar(
         top_products, 
@@ -355,15 +352,18 @@ with tab2:
     fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
         font=dict(color=text_color),
+        hovermode="closest",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
-        plot_bgcolor="rgba(0,0,0,0)"
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=0, b=0)
     )
     st.plotly_chart(fig_bar, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab3:
-    st.subheader("Unsupervised Customer Segmentation")
+    st.markdown(f"<h3 style='color: {text_color};'>Unsupervised Customer Segmentation</h3>", unsafe_allow_html=True)
     
     freq_col = 'InvoiceNo' if 'InvoiceNo' in df.columns else 'Description'
     freq_agg = 'nunique' if 'InvoiceNo' in df.columns else 'count'
@@ -380,14 +380,16 @@ with tab3:
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
     fig_scatter.update_layout(
         font=dict(color=text_color),
+        hovermode="closest",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
     )
     st.plotly_chart(fig_scatter, use_container_width=True, theme=None, config={'displayModeBar': False})
     
-    st.markdown("### 📊 Cluster Intelligence Summary")
-    st.write("The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:")
+    st.markdown(f"<h3 style='color: {text_color};'>📊 Cluster Intelligence Summary</h3>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: {text_color};'>The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:</p>", unsafe_allow_html=True)
     
     cluster_summary = rfm_df.groupby('Cluster').agg({
         'CustomerID': 'count',
@@ -411,7 +413,7 @@ with tab3:
     st.dataframe(cluster_summary, use_container_width=True, hide_index=True)
 
 with tab4:
-    st.subheader("🌐 Web Traffic Analytics")
+    st.markdown(f"<h3 style='color: {text_color};'>🌐 Web Traffic Analytics</h3>", unsafe_allow_html=True)
     
     web_df = df.groupby('Date')['WebsiteVisitors'].first().reset_index()
     total_visits = web_df['WebsiteVisitors'].sum()
@@ -425,18 +427,18 @@ with tab4:
     w_col3.metric("Peak Traffic Day", f"{peak_visits:,.0f}", f"Occurred on {peak_date}", delta_color="off")
     
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.subheader("Traffic Acquisition Trends")
+    st.markdown(f"<h3 style='color: {text_color};'>Traffic Acquisition Trends</h3>", unsafe_allow_html=True)
     
     web_df['7-Day Moving Avg'] = web_df['WebsiteVisitors'].rolling(window=7, min_periods=1).mean()
     
     fig_web = go.Figure()
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3, hoverinfo='skip'))
-    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
+    fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3), hoverinfo='y+name'))
     
-    fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
         font=dict(color=text_color),
-        hovermode="x unified",
+        hovermode="x",
+        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -445,7 +447,7 @@ with tab4:
     st.plotly_chart(fig_web, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab5:
-    st.subheader("🧠 Deep Learning (Neural Network) 30-Day Sales Forecast")
+    st.markdown(f"<h3 style='color: {text_color};'>🧠 Deep Learning (Neural Network) 30-Day Sales Forecast</h3>", unsafe_allow_html=True)
     daily_sales = df.groupby('Date')['TotalSales'].sum().reset_index()
     
     if len(daily_sales) < 10:
@@ -469,13 +471,13 @@ with tab5:
                     trigger_alert("Automated Warning: Forecasted revenue drop detected by Neural Net.", "FORECAST_WARNING")
                 
                 fig = go.Figure()
-                fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
-                fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
+                fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0]), hoverinfo='y+name'))
+                fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot'), hoverinfo='y+name'))
                 
-                fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
                     font=dict(color=text_color),
-                    hovermode="x unified",
+                    hovermode="x",
+                    hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
@@ -489,7 +491,7 @@ with tab5:
                 st.error(f"Neural Network Training Failed. Please check logs. Error: {e}")
 
 with tab6:
-    st.subheader("🚨 System Anomaly Alerts")
+    st.markdown(f"<h3 style='color: {text_color};'>🚨 System Anomaly Alerts</h3>", unsafe_allow_html=True)
     try:
         conn = sqlite3.connect('enterprise_backend.db', timeout=15)
         if conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_alerts'").fetchone(): 
@@ -511,8 +513,8 @@ with tab6:
         st.error(f"Database connection error: {e}")
 
 with tab7:
-    st.subheader("🧠 Gemini Executive AI Analyst")
-    st.write("Generative AI integration with Direct OS Storage and Quota-Optimized Routing.")
+    st.markdown(f"<h3 style='color: {text_color};'>🧠 Gemini Executive AI Analyst</h3>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: {text_color};'>Generative AI integration with Direct OS Storage and Quota-Optimized Routing.</p>", unsafe_allow_html=True)
     
     if api_key:
         if st.button("✨ Generate Live Executive Report", use_container_width=True):
@@ -525,7 +527,7 @@ with tab7:
                     st.markdown(f"""
                     <div style='background-color: {card_bg}; border: 1px solid {border_color}; padding: 30px; border-radius: 12px; margin-top: 20px;'>
                         <h3 style='color: {accent_color} !important; margin-top: 0;'>📊 Automated Executive Intelligence Brief</h3>
-                        <div style='line-height: 1.6; color: {text_color};'>
+                        <div style='color: {text_color}; line-height: 1.6;'>
                         {report_text}
                         </div>
                     </div>
