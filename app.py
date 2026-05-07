@@ -349,14 +349,15 @@ with tab1:
     fig_rev.update_layout(
         font=dict(color=text_color, family="Inter"),
         hovermode="x unified",
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
         yaxis=dict(tickprefix="$")
     )
-    st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False})
+    # THE FIX: theme=None strips Streamlit's interference
+    st.plotly_chart(fig_rev, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab2:
     top_products = df.groupby('Description')['TotalSales'].sum().sort_values().tail(5).reset_index()
@@ -373,14 +374,14 @@ with tab2:
     fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)"
     )
     
-    st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_bar, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab3:
     st.subheader("Unsupervised Customer Segmentation")
@@ -400,12 +401,12 @@ with tab3:
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
     fig_scatter.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_scatter, use_container_width=True, theme=None, config={'displayModeBar': False})
     
     st.markdown("### 📊 Cluster Intelligence Summary")
     st.write("The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:")
@@ -458,13 +459,13 @@ with tab4:
     fig_web.update_layout(
         font=dict(color=text_color, family="Inter"),
         hovermode="x unified",
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
     )
-    st.plotly_chart(fig_web, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_web, use_container_width=True, theme=None, config={'displayModeBar': False})
 
 with tab5:
     st.subheader("🧠 Deep Learning (Neural Network) 30-Day Sales Forecast")
@@ -498,7 +499,7 @@ with tab5:
                 fig.update_layout(
                     font=dict(color=text_color, family="Inter"),
                     hovermode="x unified",
-                    hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color), # FIX: Solid Hover Tooltip
+                    hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
@@ -506,7 +507,7 @@ with tab5:
                     yaxis=dict(tickprefix="$")
                 )
                 
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.plotly_chart(fig, use_container_width=True, theme=None, config={'displayModeBar': False})
                 st.toast("✅ Deep Learning Inference Complete. Model cached.", icon="🧠")
             except Exception as e:
                 st.error(f"Neural Network Training Failed. Please check logs. Error: {e}")
