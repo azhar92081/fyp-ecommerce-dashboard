@@ -36,7 +36,7 @@ auto_provision_db_v2()
 st.sidebar.header("⚙️ System Settings")
 night_mode = st.sidebar.toggle("🌙 Enable Night Mode", value=True)
 
-# --- 🎨 SAFE RESPONSIVE CSS (NO GLOBAL TEXT OVERRIDES) ---
+# --- 🎨 SAFE RESPONSIVE CSS ---
 if night_mode:
     bg_color = "#0E1117" 
     card_bg = "#161B22"
@@ -90,7 +90,6 @@ theme_css = f"""
 </style>
 """
 st.markdown(theme_css, unsafe_allow_html=True)
-# --- END CSS INJECTION ---
 
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
@@ -321,21 +320,20 @@ with tab1:
     daily_revenue_chart['7-Day Moving Avg'] = daily_revenue_chart['TotalSales'].rolling(window=7, min_periods=1).mean()
     
     fig_rev = go.Figure()
-    # NATIVE PLOTLY: opacity=0.3, hoverinfo='skip' guarantees no ghost boxes.
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3, hoverinfo='skip'))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3), hoverinfo='y+name'))
     
+    fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
-        font=dict(color=text_color),
         hovermode="x",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
         yaxis=dict(tickprefix="$")
     )
-    st.plotly_chart(fig_rev, use_container_width=True, theme=None, config={'displayModeBar': False})
+    # NATIVE STREAMLIT THEME RESTORED
+    st.plotly_chart(fig_rev, use_container_width=True, config={'displayModeBar': False})
 
 with tab2:
     st.markdown(f"<h3 style='color: {text_color};'>Top Performing Products</h3>", unsafe_allow_html=True)
@@ -351,16 +349,14 @@ with tab2:
     )
     fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
     fig_bar.update_layout(
-        font=dict(color=text_color),
         hovermode="closest",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    st.plotly_chart(fig_bar, use_container_width=True, theme=None, config={'displayModeBar': False})
+    st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
 
 with tab3:
     st.markdown(f"<h3 style='color: {text_color};'>Unsupervised Customer Segmentation</h3>", unsafe_allow_html=True)
@@ -379,14 +375,12 @@ with tab3:
     
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
     fig_scatter.update_layout(
-        font=dict(color=text_color),
         hovermode="closest",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
     )
-    st.plotly_chart(fig_scatter, use_container_width=True, theme=None, config={'displayModeBar': False})
+    st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
     
     st.markdown(f"<h3 style='color: {text_color};'>📊 Cluster Intelligence Summary</h3>", unsafe_allow_html=True)
     st.markdown(f"<p style='color: {text_color};'>The Machine Learning algorithm has categorized your customers into the following distinct behavioral groups:</p>", unsafe_allow_html=True)
@@ -435,16 +429,15 @@ with tab4:
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3, hoverinfo='skip'))
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3), hoverinfo='y+name'))
     
+    fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
-        font=dict(color=text_color),
         hovermode="x",
-        hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
     )
-    st.plotly_chart(fig_web, use_container_width=True, theme=None, config={'displayModeBar': False})
+    st.plotly_chart(fig_web, use_container_width=True, config={'displayModeBar': False})
 
 with tab5:
     st.markdown(f"<h3 style='color: {text_color};'>🧠 Deep Learning (Neural Network) 30-Day Sales Forecast</h3>", unsafe_allow_html=True)
@@ -474,10 +467,9 @@ with tab5:
                 fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0]), hoverinfo='y+name'))
                 fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot'), hoverinfo='y+name'))
                 
+                fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
-                    font=dict(color=text_color),
                     hovermode="x",
-                    hoverlabel=dict(bgcolor=card_bg, font_color=text_color, font_size=14, bordercolor=accent_color),
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
@@ -485,7 +477,7 @@ with tab5:
                     yaxis=dict(tickprefix="$")
                 )
                 
-                st.plotly_chart(fig, use_container_width=True, theme=None, config={'displayModeBar': False})
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
                 st.toast("✅ Deep Learning Inference Complete. Model cached.", icon="🧠")
             except Exception as e:
                 st.error(f"Neural Network Training Failed. Please check logs. Error: {e}")
