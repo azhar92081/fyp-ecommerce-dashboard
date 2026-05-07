@@ -101,9 +101,6 @@ theme_css = f"""
     /* Dataframe & Table Borders */
     [data-testid="stDataFrame"] {{ border-radius: 12px; overflow: hidden; border: 1px solid {border_color}; }}
     
-    /* THE NUCLEAR FIX: Brute-forcing Plotly SVG hover paths to be 100% solid */
-    g.hoverlayer path {{ fill-opacity: 1 !important; stroke-opacity: 1 !important; }}
-    
     /* Perfect Mobile Responsiveness */
     @media (max-width: 768px) {{
         div[data-testid="metric-container"] {{ padding: 16px; }}
@@ -348,11 +345,13 @@ with tab1:
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['TotalSales'], mode='lines', name='Daily Raw', line=dict(color=chart_palette[0], width=1), opacity=0.3))
     fig_rev.add_trace(go.Scatter(x=daily_revenue_chart['Date'], y=daily_revenue_chart['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[0], width=3)))
     
+    # THE SILVER BULLET: Forcing solid hover labels on the traces themselves
+    fig_rev.update_traces(hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
+    
     fig_rev.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_rev.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="x", # FIXED: No longer uses 'unified' which forces transparency
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
+        hovermode="x", 
         margin=dict(l=0, r=0, t=20, b=0), 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)", 
@@ -373,10 +372,12 @@ with tab2:
         text='TotalSales', 
         color_discrete_sequence=[chart_palette[0]]
     )
-    fig_bar.update_traces(texttemplate='$%{text:,.0f}', textposition='inside')
+    fig_bar.update_traces(
+        texttemplate='$%{text:,.0f}', textposition='inside',
+        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color) # THE SILVER BULLET
+    )
     fig_bar.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         uniformtext_minsize=10, 
         uniformtext_mode='hide', 
         paper_bgcolor="rgba(0,0,0,0)", 
@@ -401,9 +402,12 @@ with tab3:
     rfm_df['Cluster'] = KMeans(n_clusters=k_value, random_state=42).fit_predict(StandardScaler().fit_transform(rfm_df[['Recency', 'Frequency', 'Monetary']]))
     
     fig_scatter = px.scatter_3d(rfm_df, x='Recency', y='Frequency', z='Monetary', color=rfm_df['Cluster'].astype(str), color_discrete_sequence=chart_palette)
+    
+    # THE SILVER BULLET
+    fig_scatter.update_traces(hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
+    
     fig_scatter.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=0, r=0, t=0, b=0)
@@ -457,11 +461,13 @@ with tab4:
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['WebsiteVisitors'], fill='tozeroy', mode='none', name='Daily Visitors', fillcolor=chart_palette[1], opacity=0.3))
     fig_web.add_trace(go.Scatter(x=web_df['Date'], y=web_df['7-Day Moving Avg'], mode='lines', name='7-Day Trend', line=dict(color=chart_palette[1], width=3)))
     
+    # THE SILVER BULLET
+    fig_web.update_traces(hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
+    
     fig_web.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
     fig_web.update_layout(
         font=dict(color=text_color, family="Inter"),
-        hovermode="x", # FIXED
-        hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
+        hovermode="x",
         margin=dict(l=0, r=0, t=20, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -497,11 +503,13 @@ with tab5:
                 fig.add_trace(go.Scatter(x=daily_sales['Date'], y=daily_sales['TotalSales'], mode='lines', name='Historical Sales', line=dict(color=chart_palette[0])))
                 fig.add_trace(go.Scatter(x=future_dates, y=predictions, mode='lines', name='Neural Net Trajectory', line=dict(color=chart_palette[1], dash='dot')))
                 
+                # THE SILVER BULLET
+                fig.update_traces(hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color))
+                
                 fig.update_xaxes(showspikes=True, spikecolor="gray", spikesnap="cursor", spikemode="across")
                 fig.update_layout(
                     font=dict(color=text_color, family="Inter"),
-                    hovermode="x", # FIXED
-                    hoverlabel=dict(bgcolor=card_bg, font_size=14, font_family="Inter", font_color=text_color, bordercolor=accent_color),
+                    hovermode="x",
                     margin=dict(l=0, r=0, t=20, b=0),
                     paper_bgcolor="rgba(0,0,0,0)",
                     plot_bgcolor="rgba(0,0,0,0)",
